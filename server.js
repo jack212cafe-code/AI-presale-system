@@ -15,9 +15,20 @@ import {
   isAuthenticatedAdminRequest,
   validateAdminPassword
 } from "./lib/admin-auth.js";
+import {
+  buildUserSessionCookie,
+  buildExpiredUserSessionCookie,
+  createUserSession,
+  destroyUserSession,
+  getSessionUser,
+  getSessionUserId,
+  getUserSessionToken,
+  isAuthenticatedUserRequest,
+  validateUserCredentials
+} from "./lib/user-auth.js";
 import { createJob, getJob, updateJob } from "./lib/admin-jobs.js";
 import { normalizeIntakePayload } from "./lib/intake.js";
-import { approveProject, createProjectRecord, getProjectById, persistBomJson, persistRequirementsJson, persistSolutionJson, persistProposalMetadata } from "./lib/projects.js";
+import { approveProject, createProjectRecord, getProjectById, listProjectsByUser, persistBomJson, persistRequirementsJson, persistSolutionJson, persistProposalMetadata } from "./lib/projects.js";
 import { runDiscoveryAgent } from "./agents/discovery.js";
 import { runSolutionAgent } from "./agents/solution.js";
 import { runBomAgent } from "./agents/bom.js";
@@ -72,6 +83,14 @@ function requireAdminAuth(request, response) {
     return false;
   }
 
+  return true;
+}
+
+function requireUserAuth(request, response) {
+  if (!isAuthenticatedUserRequest(request)) {
+    json(response, 401, { ok: false, error: "Authentication required" });
+    return false;
+  }
   return true;
 }
 
@@ -136,10 +155,12 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/intake") {
+    if (!requireUserAuth(request, response)) return;
     try {
       const rawPayload = await parseBody(request);
       const intake = normalizeIntakePayload(rawPayload);
-      const result = await createProjectRecord(intake);
+      const userId = getSessionUserId(request);
+      const result = await createProjectRecord(intake, userId);
 
       return json(response, 201, {
         ok: true,
@@ -153,10 +174,12 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/intake/analyze") {
+    if (!requireUserAuth(request, response)) return;
     try {
       const rawPayload = await parseBody(request);
       const intake = normalizeIntakePayload(rawPayload);
-      const created = await createProjectRecord(intake);
+      const userId = getSessionUserId(request);
+      const created = await createProjectRecord(intake, userId);
       const requirements = await runDiscoveryAgent(intake, {
         projectId: created.project.id
       });
@@ -176,6 +199,7 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/solution") {
+    if (!requireUserAuth(request, response)) return;
     try {
       const rawPayload = await parseBody(request);
       if (!rawPayload.project_id) {
@@ -198,6 +222,7 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "POST" && url.pathname.match(/^\/api\/projects\/[^/]+\/approve$/)) {
+    if (!requireUserAuth(request, response)) return;
     const projectId = url.pathname.split("/")[3];
     try {
       const project = await getProjectById(projectId);
@@ -337,6 +362,7 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/pipeline") {
+    if (!requireUserAuth(request, response)) return;
     let projectId = null;
     let project = null;
     let stageFailed = null;
@@ -344,9 +370,10 @@ export async function appHandler(request, response) {
     try {
       const rawPayload = await parseBody(request);
       const intake = normalizeIntakePayload(rawPayload);
+      const userId = getSessionUserId(request);
 
       // Stage 1: Create project
-      const created = await createProjectRecord(intake);
+      const created = await createProjectRecord(intake, userId);
       project = created.project;
       projectId = project.id;
 
@@ -398,7 +425,19 @@ export async function appHandler(request, response) {
     }
   }
 
+  if (request.method === "GET" && url.pathname === "/api/projects") {
+    if (!requireUserAuth(request, response)) return;
+    try {
+      const userId = getSessionUserId(request);
+      const projects = await listProjectsByUser(userId);
+      return json(response, 200, { ok: true, projects });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
   if (request.method === "GET" && url.pathname.match(/^\/api\/projects\/[^/]+\/status$/)) {
+    if (!requireUserAuth(request, response)) return;
     const projectId = url.pathname.split("/")[3];
     try {
       const project = await getProjectById(projectId);
@@ -409,6 +448,49 @@ export async function appHandler(request, response) {
     } catch (error) {
       return json(response, 500, { ok: false, error: error.message });
     }
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/auth/login") {
+    try {
+      const payload = await parseBody(request);
+      const user = await validateUserCredentials(payload.username || "", payload.password || "");
+      if (!user) {
+        return json(response, 401, { ok: false, error: "Invalid credentials" });
+      }
+
+      const token = createUserSession(user.id, user.display_name);
+      return json(
+        response,
+        200,
+        { ok: true, user: { id: user.id, username: user.username, display_name: user.display_name } },
+        { "Set-Cookie": buildUserSessionCookie(token) }
+      );
+    } catch (error) {
+      return json(response, 400, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/auth/logout") {
+    const token = getUserSessionToken(request);
+    if (token) {
+      destroyUserSession(token);
+    }
+
+    return json(
+      response,
+      200,
+      { ok: true },
+      { "Set-Cookie": buildExpiredUserSessionCookie() }
+    );
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/auth/session") {
+    const user = getSessionUser(request);
+    if (!user) {
+      return json(response, 200, { ok: true, authenticated: false });
+    }
+
+    return json(response, 200, { ok: true, authenticated: true, user });
   }
 
   return json(response, 404, { error: "Route not found" });

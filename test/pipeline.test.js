@@ -11,6 +11,7 @@ process.env.ADMIN_PORTAL_PASSWORD = "test-admin-password";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { createAppServer } = await import("../server.js");
+const { createUserSession, buildUserSessionCookie } = await import("../lib/user-auth.js");
 
 async function loadFixture(name) {
   const filePath = path.join(__dirname, "fixtures", name);
@@ -19,6 +20,7 @@ async function loadFixture(name) {
 
 let server;
 let baseUrl;
+let authCookie;
 
 test.before(async () => {
   server = createAppServer();
@@ -26,6 +28,9 @@ test.before(async () => {
   await once(server, "listening");
   const { port } = server.address();
   baseUrl = `http://127.0.0.1:${port}`;
+
+  const token = createUserSession("test-pipeline-user", "Pipeline Tester");
+  authCookie = buildUserSessionCookie(token);
 });
 
 test.after(() => {
@@ -36,7 +41,7 @@ test("POST /api/pipeline with HCI fixture returns complete project", async () =>
   const fixture = await loadFixture("scenario_hci.json");
   const res = await fetch(`${baseUrl}/api/pipeline`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Cookie: authCookie },
     body: JSON.stringify(fixture)
   });
 
@@ -56,14 +61,16 @@ test("GET /api/projects/:id/status returns project record or 404 in local mode",
   const fixture = await loadFixture("scenario_hci.json");
   const createRes = await fetch(`${baseUrl}/api/intake`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Cookie: authCookie },
     body: JSON.stringify(fixture)
   });
   assert.equal(createRes.status, 201);
   const createBody = await createRes.json();
   const projectId = createBody.project.id;
 
-  const res = await fetch(`${baseUrl}/api/projects/${projectId}/status`);
+  const res = await fetch(`${baseUrl}/api/projects/${projectId}/status`, {
+    headers: { Cookie: authCookie }
+  });
   const body = await res.json();
   // In local mode (no Supabase), getProjectById returns null -> 404
   // In integrated mode, project is found -> 200 with project.id matching
@@ -79,7 +86,7 @@ test("GET /api/projects/:id/status returns project record or 404 in local mode",
 test("POST /api/pipeline with empty payload returns error", async () => {
   const res = await fetch(`${baseUrl}/api/pipeline`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Cookie: authCookie },
     body: JSON.stringify({})
   });
 
@@ -88,7 +95,9 @@ test("POST /api/pipeline with empty payload returns error", async () => {
 });
 
 test("GET /api/projects/nonexistent-id/status returns 404 or error", async () => {
-  const res = await fetch(`${baseUrl}/api/projects/00000000-0000-0000-0000-000000000000/status`);
+  const res = await fetch(`${baseUrl}/api/projects/00000000-0000-0000-0000-000000000000/status`, {
+    headers: { Cookie: authCookie }
+  });
   const body = await res.json();
   assert.ok(res.status === 404 || body.ok === false);
 });
