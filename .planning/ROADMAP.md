@@ -27,11 +27,11 @@ Plans:
 **Goal:** Simple login so team members have isolated sessions and project history
 **Requirements**: M3, M4
 **Depends on:** Phase 1
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Users table, auth library, seed script, login/logout endpoints
-- [ ] 02-02-PLAN.md — Auth middleware on routes, project ownership (user_id FK), project list endpoint, auth tests
+- [x] 02-02-PLAN.md — Auth middleware on routes, project ownership (user_id FK), project list endpoint, auth tests
 
 **Exit criteria:** 5 team members can log in with separate accounts; each sees only their own projects
 
@@ -110,7 +110,7 @@ Plans:
 | Phase | Title | Status |
 |-------|-------|--------|
 | 1 | Pipeline Completion | Not Started |
-| 2 | User Authentication | Planning Complete |
+| 2 | User Authentication | Complete |
 | 3 | Chat Backend | Not Started |
 | 4 | Chat UI Frontend | Not Started |
 | 5 | Solution Quality & RAG | Not Started |

@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Office Internal Release
 status: executing
-last_updated: "2026-03-29T23:11:52.579Z"
+last_updated: "2026-03-30T00:00:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,14 +18,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Drop a customer brief → get a trustworthy exportable proposal in minutes
-**Current focus:** Phase 02 — user-authentication
+**Current focus:** Phase 02 — user-authentication (complete)
 **Milestone:** v1.0 — Office Internal Release
 
 ## Current Phase
 
-**Phase 1 of 6: Pipeline Completion**
-Status: Executing Phase 01
-Next action: `/gsd:plan-phase 1`
+**Phase 2 of 6: User Authentication**
+**Current Plan: 2 of 2**
+Status: Phase 02 Complete
+Next action: Continue to Phase 03 (Chat Backend)
 
 ## Decisions
 
@@ -39,6 +40,8 @@ Next action: `/gsd:plan-phase 1`
 - [Phase 01-pipeline-completion]: Partial failure returns 500 with stage_failed field (D-04)
 - [Phase 02-user-authentication]: bcryptjs (pure JS) for Windows compatibility
 - [Phase 02-user-authentication]: 30-day sliding session cookie for team persistent login
+- [Phase 02-user-authentication]: requireUserAuth mirrors requireAdminAuth pattern for consistency
+- [Phase 02-user-authentication]: GET /api/projects placed before status route to avoid route conflict
 
 ## Blockers
 
@@ -52,7 +55,7 @@ Next action: `/gsd:plan-phase 1`
 
 ## Notes
 
-- 19/19 tests passing as of 2026-03-29
+- 10/10 tests passing as of 2026-03-30 (6 auth tests + 4 pipeline tests with auth)
 - pricing_catalog: 25 SKUs (Nutanix, Veeam, Dell, Cisco, Fortinet, HPE)
 - KB: 36 seed docs embedded
 - Codebase map: .planning/codebase/ (7 docs, mapped 2026-03-29)
