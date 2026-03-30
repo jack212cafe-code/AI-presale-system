@@ -42,11 +42,11 @@ Plans:
 **Goal:** Multi-turn chat API with stage state machine that routes messages through pipeline agents per project
 **Requirements**: M2
 **Depends on:** Phase 2
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 03-01-PLAN.md — Conversations + messages schema, conversation CRUD library
-- [ ] 03-02-PLAN.md — POST /api/chat endpoint with stage state machine and pipeline integration
+- [x] 03-02-PLAN.md — POST /api/chat endpoint with stage state machine and pipeline integration
 - [ ] 03-03-PLAN.md — Chat endpoint integration tests
 
 **Exit criteria:** curl /api/chat with multi-turn messages navigates through all pipeline stages correctly
