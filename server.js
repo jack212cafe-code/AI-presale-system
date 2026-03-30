@@ -33,6 +33,7 @@ import { runDiscoveryAgent } from "./agents/discovery.js";
 import { runSolutionAgent } from "./agents/solution.js";
 import { runBomAgent } from "./agents/bom.js";
 import { runProposalAgent } from "./agents/proposal.js";
+import { handleChatMessage } from "./lib/chat.js";
 import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments } from "./lib/supabase.js";
 import { config } from "./lib/config.js";
 import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } from "./knowledge_base/raw-import-lib.js";
@@ -491,6 +492,32 @@ export async function appHandler(request, response) {
     }
 
     return json(response, 200, { ok: true, authenticated: true, user });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/chat") {
+    if (!requireUserAuth(request, response)) return;
+    try {
+      const payload = await parseBody(request);
+      if (!payload.message || typeof payload.message !== "string" || !payload.message.trim()) {
+        return json(response, 400, { ok: false, error: "message is required" });
+      }
+      const userId = getSessionUserId(request);
+      const result = await handleChatMessage({
+        conversationId: payload.conversation_id || null,
+        message: payload.message,
+        userId
+      });
+
+      return json(response, result.created ? 201 : 200, {
+        ok: true,
+        conversation_id: result.conversation_id,
+        project_id: result.project_id,
+        stage: result.stage,
+        text: result.text
+      });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
   }
 
   return json(response, 404, { error: "Route not found" });
