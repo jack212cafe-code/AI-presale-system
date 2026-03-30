@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Office Internal Release
-status: executing
-last_updated: "2026-03-30T00:00:00.000Z"
+status: completed
+last_updated: "2026-03-30T04:42:01.293Z"
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 2
+  total_plans: 7
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,15 +18,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Drop a customer brief → get a trustworthy exportable proposal in minutes
-**Current focus:** Phase 02 — user-authentication (complete)
+**Current focus:** Phase 03 — chat-backend
 **Milestone:** v1.0 — Office Internal Release
 
 ## Current Phase
 
-**Phase 2 of 6: User Authentication**
-**Current Plan: 2 of 2**
-Status: Phase 02 Complete
-Next action: Continue to Phase 03 (Chat Backend)
+**Phase 3 of 6: Chat Backend**
+**Current Plan: 1 of 3**
+Status: Plan 03-01 Complete
+Next action: Continue to Plan 03-02 (Chat Endpoint)
 
 ## Decisions
 
@@ -42,6 +42,8 @@ Next action: Continue to Phase 03 (Chat Backend)
 - [Phase 02-user-authentication]: 30-day sliding session cookie for team persistent login
 - [Phase 02-user-authentication]: requireUserAuth mirrors requireAdminAuth pattern for consistency
 - [Phase 02-user-authentication]: GET /api/projects placed before status route to avoid route conflict
+- [Phase 03-chat-backend]: stage column is text not enum for flexibility; validation in application code
+- [Phase 03-chat-backend]: conversations and messages use cascade delete from projects chain
 
 ## Blockers
 
@@ -55,7 +57,7 @@ Next action: Continue to Phase 03 (Chat Backend)
 
 ## Notes
 
-- 10/10 tests passing as of 2026-03-30 (6 auth tests + 4 pipeline tests with auth)
+- 29/29 tests passing as of 2026-03-30 (6 auth + 23 scaffold, all protected routes authenticated)
 - pricing_catalog: 25 SKUs (Nutanix, Veeam, Dell, Cisco, Fortinet, HPE)
 - KB: 36 seed docs embedded
 - Codebase map: .planning/codebase/ (7 docs, mapped 2026-03-29)

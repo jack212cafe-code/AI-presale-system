@@ -39,16 +39,15 @@ Plans:
 
 ### Phase 3: Chat Backend
 
-**Goal:** Real-time multi-turn chat API that maintains conversation context per project
+**Goal:** Multi-turn chat API with stage state machine that routes messages through pipeline agents per project
 **Requirements**: M2
 **Depends on:** Phase 2
-**Plans:** 0 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] Plan 1: Design conversations + messages table in Supabase
-- [ ] Plan 2: POST /api/chat endpoint: accepts message, maintains project context, runs relevant agent stage
-- [ ] Plan 3: Conversation state machine (greeting → brief → discovery → solution → bom → proposal)
-- [ ] Plan 4: Streaming response support (Server-Sent Events or chunked transfer)
+- [x] 03-01-PLAN.md — Conversations + messages schema, conversation CRUD library
+- [ ] 03-02-PLAN.md — POST /api/chat endpoint with stage state machine and pipeline integration
+- [ ] 03-03-PLAN.md — Chat endpoint integration tests
 
 **Exit criteria:** curl /api/chat with multi-turn messages navigates through all pipeline stages correctly
 
@@ -111,7 +110,7 @@ Plans:
 |-------|-------|--------|
 | 1 | Pipeline Completion | Not Started |
 | 2 | User Authentication | Complete |
-| 3 | Chat Backend | Not Started |
+| 3 | Chat Backend | Planning Complete |
 | 4 | Chat UI Frontend | Not Started |
 | 5 | Solution Quality & RAG | Not Started |
 | 6 | QA & Internal Release | Not Started |
