@@ -1,0 +1,25 @@
+{
+  "name": "ai-presale-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Phase 1 scaffold for a one-person AI-native IT presale system.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "test": "node --test --test-isolation=none",
+    "check": "node --test --test-isolation=none",
+    "seed:kb": "node knowledge_base/embed.js",
+    "seed:users": "node scripts/seed-users.js",
+    "smoke": "node scripts/smoke.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "bcryptjs": "^2.4.3",
+    "docx": "^9.5.1",
+    "dotenv": "^17.2.3"
+  }
+}
