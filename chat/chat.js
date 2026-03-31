@@ -185,10 +185,78 @@ async function syncSession() {
   await loadProjects();
 }
 
-function appendSolutionCards(msgEl, markdownText) { /* Task 2 */ }
-function appendDownloadButton(projectId) { /* Task 2 */ }
-async function loadProjects() { /* Task 2 */ }
-async function loadConversation(projectId) { /* Task 2 */ }
+function appendSolutionCards(msgEl, markdownText) {
+  const cardStrip = document.createElement("div");
+  cardStrip.className = "solution-cards";
+  const matches = [...markdownText.matchAll(/^(\d+)\.\s+\*\*(.+?)\*\*/gm)];
+  if (matches.length === 0) return;
+  matches.forEach(([, num, name]) => {
+    const card = document.createElement("div");
+    card.className = "solution-card";
+    card.innerHTML = `
+      <div class="solution-card-name">${escapeHtml(name)}</div>
+      <button>เลือกตัวเลือกนี้</button>
+    `;
+    card.querySelector("button").addEventListener("click", () => {
+      cardStrip.querySelectorAll("button").forEach(b => { b.disabled = true; });
+      sendMessage(`เลือกตัวเลือกที่ ${num}`);
+    });
+    cardStrip.appendChild(card);
+  });
+  msgEl.appendChild(cardStrip);
+}
+
+function appendDownloadButton(projectId) {
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.innerHTML = `
+    <div class="message-label">AI Presale Assistant</div>
+    <a href="/api/proposals/${encodeURIComponent(projectId)}/download" download class="download-btn">ดาวน์โหลด Proposal</a>
+  `;
+  thread.appendChild(msg);
+  scrollToBottom();
+}
+
+async function loadProjects() {
+  const { response, payload } = await apiFetch("/api/projects", { method: "GET" });
+  if (!response.ok) return;
+  projectList.innerHTML = "";
+  payload.projects.forEach(project => {
+    const item = document.createElement("div");
+    item.className = "project-item";
+    item.dataset.projectId = project.id;
+    item.innerHTML = `
+      <div class="project-item-name">${escapeHtml(project.customer_name || "Untitled Project")}</div>
+      <div class="project-item-date">${formatDate(project.created_at)}</div>
+    `;
+    item.addEventListener("click", () => loadConversation(project.id));
+    projectList.appendChild(item);
+  });
+}
+
+async function loadConversation(projectId) {
+  const { payload: convPayload } = await apiFetch(`/api/projects/${projectId}/conversations`, { method: "GET" });
+  if (!convPayload.ok || !convPayload.conversations.length) return;
+  const conversation = convPayload.conversations[0];
+  activeConversationId = conversation.id;
+  activeProjectId = projectId;
+  document.querySelectorAll(".project-item").forEach(el => el.classList.remove("active"));
+  const activeItem = document.querySelector(`[data-project-id="${projectId}"]`);
+  if (activeItem) activeItem.classList.add("active");
+  const { payload: msgPayload } = await apiFetch(`/api/conversations/${conversation.id}/messages`, { method: "GET" });
+  if (!msgPayload.ok) return;
+  clearThread();
+  msgPayload.messages.forEach(msg => {
+    if (msg.role === "user") {
+      appendUserBubble(msg.content);
+    } else {
+      appendAssistantBubble(msg.content, conversation.stage);
+    }
+  });
+  if (conversation.stage === "complete") {
+    appendDownloadButton(projectId);
+  }
+}
 function clearThread() { thread.innerHTML = ""; }
 function showEmptyState() {
   thread.innerHTML = `<div class="empty-state" id="empty-state"><h2>เริ่มต้นการสนทนา</h2><p>พิมพ์รายละเอียดโปรเจกต์ของคุณ เช่น ขนาดองค์กร ระบบที่ต้องการ หรือปัญหาที่พบ</p></div>`;
