@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Phase
 
 **Phase 4 of 6: Chat UI Frontend**
-**Current Plan: 2 of 3**
-Status: Plan 04-02 Complete
-Next action: Continue to Plan 04-03 (Chat Page)
+**Current Plan: 3 of 3**
+Status: Plan 04-03 Complete
+Next action: Continue to Plan 04-04 (Chat JavaScript)
 
 ## Decisions
 
@@ -48,6 +48,7 @@ Next action: Continue to Plan 04-03 (Chat Page)
 - [Phase 03-chat-backend]: solution index clamped to valid range to prevent out-of-bounds
 - [Phase 04-chat-ui-frontend]: Centered card layout mirrors admin login panel pattern (D-01b)
 - [Phase 04-chat-ui-frontend]: CSS variables copied verbatim from intake/index.html :root for palette consistency
+- [Phase 04-chat-ui-frontend]: All CSS inline in chat.html — no external stylesheet (no build step constraint)
 
 ## Blockers
 

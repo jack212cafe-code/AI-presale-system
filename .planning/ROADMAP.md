@@ -63,7 +63,7 @@ Plans:
 Plans:
 - [ ] 04-01-PLAN.md — Server routes + API endpoints (proposal download, conversation messages)
 - [x] 04-02-PLAN.md — Login page (login.html + login.js)
-- [ ] 04-03-PLAN.md — Chat HTML/CSS shell (full-height layout, sidebar, thread, composer)
+- [x] 04-03-PLAN.md — Chat HTML/CSS shell (full-height layout, sidebar, thread, composer)
 - [ ] 04-04-PLAN.md — Chat JS logic (messaging, solution cards, loading, sidebar, download)
 - [ ] 04-05-PLAN.md — Human verification of complete chat flow
 
