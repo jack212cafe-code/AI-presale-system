@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Presale Assistant — Login</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f2ea;
+      --surface: rgba(255, 255, 255, 0.84);
+      --surface-strong: #fffdf9;
+      --ink: #171717;
+      --muted: #6b7280;
+      --line: rgba(23, 23, 23, 0.1);
+      --accent: #111111;
+      --accent-soft: rgba(17, 17, 17, 0.06);
+      --success-bg: #eef6f1;
+      --success-ink: #21593e;
+      --error-bg: #fbefef;
+      --error-ink: #8b2d38;
+      --shadow: 0 24px 70px rgba(23, 23, 23, 0.08);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: var(--shadow);
+    }
+    .login-card h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .login-card p {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    input {
+      width: 100%;
+      padding: 13px 14px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--surface-strong);
+      font-size: 16px;
+      font-family: inherit;
+      color: var(--ink);
+    }
+    input:focus {
+      outline: none;
+      border-color: rgba(17,17,17,0.26);
+      box-shadow: 0 0 0 4px rgba(17,17,17,0.06);
+    }
+    .primary {
+      width: 100%;
+      padding: 13px 20px;
+      border: none;
+      border-radius: var(--radius-md);
+      background: var(--accent);
+      color: #f7f4ef;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .primary:hover { opacity: 0.9; }
+    .primary:disabled { opacity: 0.5; cursor: wait; }
+    .error-msg {
+      display: none;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: var(--error-bg);
+      color: var(--error-ink);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+    }
+    .error-msg.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h1>AI Presale Assistant</h1>
+    <p>เข้าสู่ระบบเพื่อเริ่มต้นใช้งาน</p>
+    <div id="error-msg" class="error-msg"></div>
+    <form id="login-form" autocomplete="on">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required autocomplete="username" />
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password" />
+      <button type="submit" class="primary" id="login-btn">เข้าสู่ระบบ</button>
+    </form>
+  </div>
+  <script src="/login/login.js"></script>
+</body>
+</html>
