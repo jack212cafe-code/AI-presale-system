@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Office Internal Release
 status: completed
-last_updated: "2026-03-31T23:28:56.955Z"
+last_updated: "2026-03-31T23:39:33.873Z"
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 10
 ---
 
 # Project State
@@ -48,7 +48,9 @@ Next action: Continue to Plan 04-04 (Chat JavaScript)
 - [Phase 03-chat-backend]: solution index clamped to valid range to prevent out-of-bounds
 - [Phase 04-chat-ui-frontend]: Centered card layout mirrors admin login panel pattern (D-01b)
 - [Phase 04-chat-ui-frontend]: CSS variables copied verbatim from intake/index.html :root for palette consistency
+- [Phase 04-chat-ui-frontend]: proposal_url field confirmed (not proposal_path) in download endpoint
 - [Phase 04-chat-ui-frontend]: All CSS inline in chat.html — no external stylesheet (no build step constraint)
+- [Phase 04-chat-ui-frontend]: chat.js uses CDN globals (marked, DOMPurify) — no module imports
 
 ## Blockers
 

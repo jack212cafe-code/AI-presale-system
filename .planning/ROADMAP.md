@@ -58,10 +58,10 @@ Plans:
 **Goal:** Browser chat interface like Claude — clean, empathy-first, multi-turn
 **Requirements**: M2
 **Depends on:** Phase 3
-**Plans:** 1/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
-- [ ] 04-01-PLAN.md — Server routes + API endpoints (proposal download, conversation messages)
+- [x] 04-01-PLAN.md — Server routes + API endpoints (proposal download, conversation messages)
 - [x] 04-02-PLAN.md — Login page (login.html + login.js)
 - [x] 04-03-PLAN.md — Chat HTML/CSS shell (full-height layout, sidebar, thread, composer)
 - [ ] 04-04-PLAN.md — Chat JS logic (messaging, solution cards, loading, sidebar, download)
