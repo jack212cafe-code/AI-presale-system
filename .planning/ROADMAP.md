@@ -58,13 +58,14 @@ Plans:
 **Goal:** Browser chat interface like Claude — clean, empathy-first, multi-turn
 **Requirements**: M2
 **Depends on:** Phase 3
-**Plans:** 0 plans
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] Plan 1: Chat layout (message thread, input bar, sidebar with project list)
-- [ ] Plan 2: Render solution options as structured cards in chat
-- [ ] Plan 3: Render BOM as inline table in chat
-- [ ] Plan 4: Proposal download button in chat + loading states
+- [ ] 04-01-PLAN.md — Server routes + API endpoints (proposal download, conversation messages)
+- [x] 04-02-PLAN.md — Login page (login.html + login.js)
+- [ ] 04-03-PLAN.md — Chat HTML/CSS shell (full-height layout, sidebar, thread, composer)
+- [ ] 04-04-PLAN.md — Chat JS logic (messaging, solution cards, loading, sidebar, download)
+- [ ] 04-05-PLAN.md — Human verification of complete chat flow
 
 **Exit criteria:** Team member opens browser, logs in, types Thai brief, receives solution + BOM table + download link without leaving the chat
 
@@ -111,6 +112,6 @@ Plans:
 | 1 | Pipeline Completion | Not Started |
 | 2 | User Authentication | Complete |
 | 3 | Chat Backend | Planning Complete |
-| 4 | Chat UI Frontend | Not Started |
+| 4 | Chat UI Frontend | Planning Complete |
 | 5 | Solution Quality & RAG | Not Started |
 | 6 | QA & Internal Release | Not Started |
