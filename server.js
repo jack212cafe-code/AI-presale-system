@@ -34,6 +34,7 @@ import { runSolutionAgent } from "./agents/solution.js";
 import { runBomAgent } from "./agents/bom.js";
 import { runProposalAgent } from "./agents/proposal.js";
 import { handleChatMessage } from "./lib/chat.js";
+import { getMessagesByConversation, getConversationsByProject } from "./lib/conversations.js";
 import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments } from "./lib/supabase.js";
 import { config } from "./lib/config.js";
 import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } from "./knowledge_base/raw-import-lib.js";
@@ -153,6 +154,22 @@ export async function appHandler(request, response) {
       path.join(__dirname, "admin", "admin.js"),
       "application/javascript; charset=utf-8"
     );
+  }
+
+  if (request.method === "GET" && url.pathname === "/chat") {
+    return serveFile(response, path.join(__dirname, "chat", "chat.html"), "text/html; charset=utf-8");
+  }
+
+  if (request.method === "GET" && url.pathname === "/login") {
+    return serveFile(response, path.join(__dirname, "login", "login.html"), "text/html; charset=utf-8");
+  }
+
+  if (request.method === "GET" && url.pathname === "/chat/chat.js") {
+    return serveFile(response, path.join(__dirname, "chat", "chat.js"), "application/javascript; charset=utf-8");
+  }
+
+  if (request.method === "GET" && url.pathname === "/login/login.js") {
+    return serveFile(response, path.join(__dirname, "login", "login.js"), "application/javascript; charset=utf-8");
   }
 
   if (request.method === "POST" && url.pathname === "/api/intake") {
@@ -515,6 +532,49 @@ export async function appHandler(request, response) {
         stage: result.stage,
         text: result.text
       });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/proposals\/[^/]+\/download$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const projectId = url.pathname.split("/")[3];
+    try {
+      const project = await getProjectById(projectId);
+      if (!project || !project.proposal_url) {
+        return json(response, 404, { ok: false, error: "Proposal not found" });
+      }
+      const filePath = path.resolve(__dirname, project.proposal_url);
+      const file = await readFile(filePath);
+      const filename = path.basename(filePath);
+      response.writeHead(200, {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Disposition": `attachment; filename="${filename}"`
+      });
+      response.end(file);
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/conversations\/[^/]+\/messages$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const conversationId = url.pathname.split("/")[3];
+    try {
+      const messages = await getMessagesByConversation(conversationId);
+      return json(response, 200, { ok: true, messages });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/projects\/[^/]+\/conversations$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const projectId = url.pathname.split("/")[3];
+    try {
+      const conversations = await getConversationsByProject(projectId);
+      return json(response, 200, { ok: true, conversations });
     } catch (error) {
       return json(response, 500, { ok: false, error: error.message });
     }
