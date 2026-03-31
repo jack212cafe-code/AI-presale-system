@@ -1,6 +1,7 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 
 process.env.AI_PRESALE_FORCE_LOCAL = "1";
 process.env.ADMIN_PORTAL_PASSWORD = "test-admin-password";
@@ -99,4 +100,48 @@ describe("POST /api/chat", () => {
   // Expected behavior:
   //   - First message returns conversation_id + stage:awaiting_selection
   //   - Second message with conversation_id + "1" returns stage:complete with BOM text
+});
+
+describe("Phase 04 endpoints", () => {
+  before(() => {
+    mkdirSync("chat", { recursive: true });
+    mkdirSync("login", { recursive: true });
+    writeFileSync("chat/chat.html", "<!DOCTYPE html><html><body>chat</body></html>");
+    writeFileSync("chat/chat.js", "// placeholder");
+    writeFileSync("login/login.html", "<!DOCTYPE html><html><body>login</body></html>");
+    writeFileSync("login/login.js", "// placeholder");
+  });
+
+  after(() => {
+    rmSync("chat", { recursive: true, force: true });
+    rmSync("login", { recursive: true, force: true });
+  });
+
+  it("GET /chat returns 200 with text/html", async () => {
+    const res = await fetch(`${baseUrl}/chat`);
+    assert.equal(res.status, 200);
+    const ct = res.headers.get("content-type");
+    assert.ok(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+  });
+
+  it("GET /login returns 200 with text/html", async () => {
+    const res = await fetch(`${baseUrl}/login`);
+    assert.equal(res.status, 200);
+    const ct = res.headers.get("content-type");
+    assert.ok(ct.includes("text/html"), `Expected text/html, got ${ct}`);
+  });
+
+  it("GET /api/conversations/:id/messages without auth returns 401", async () => {
+    const res = await fetch(`${baseUrl}/api/conversations/fake-id/messages`);
+    const body = await res.json();
+    assert.equal(res.status, 401);
+    assert.equal(body.ok, false);
+  });
+
+  it("GET /api/proposals/:id/download without auth returns 401", async () => {
+    const res = await fetch(`${baseUrl}/api/proposals/fake-id/download`);
+    const body = await res.json();
+    assert.equal(res.status, 401);
+    assert.equal(body.ok, false);
+  });
 });
