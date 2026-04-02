@@ -7,8 +7,12 @@ import { runProposalAgent } from "../agents/proposal.js";
 
 const intake = normalizeIntakePayload({
   customer_name: "K-Edge Networks",
+  partner_type: "System Integrator",
   industry: "IT Services",
   primary_use_case: "DR-ready HCI + immutable backup",
+  core_pain_point: "Legacy infrastructure lacks DR capability and immutable backup.",
+  desired_outcome: "Resilient HCI platform with immutable backup and warm DR site.",
+  trust_priority: "Accuracy first",
   users: 400,
   vm_count: 150,
   storage_tb: 120,
