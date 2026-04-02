@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Office Internal Release
-status: completed
-last_updated: "2026-04-02T07:00:00.000Z"
+status: in_progress
+last_updated: "2026-04-02T06:00:00Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 15
 ---
 
 # Project State
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Phase
 
 **Phase 5 of 6: Solution Quality & RAG Hardening**
-**Current Plan: 1 of 3**
-Status: Plan 05-01 Complete
-Next action: Continue to Plan 05-02 (Solution prompt + proposal prompt rewrite)
+**Current Plan: 3 of 3 — COMPLETE**
+Status: Plan 05-03 Complete — Phase 5 Complete
+Next action: Continue to Phase 6 (QA & Internal Release)
 
 ## Decisions
 
@@ -56,6 +56,9 @@ Next action: Continue to Plan 05-02 (Solution prompt + proposal prompt rewrite)
 - [Phase 05-solution-quality-rag-hardening]: Thai enterprise framing replaces SaaS framing in solution prompt (D-04)
 - [Phase 05-solution-quality-rag-hardening]: All 6 vendor families named explicitly in solution prompt to prevent hallucination (D-05)
 - [Phase 05-solution-quality-rag-hardening]: CRITICAL Thai language instruction placed at top of proposal prompt (D-07)
+- [Phase 05-solution-quality-rag-hardening]: BOM validation uses KNOWN_SKUS Set for catalog match checking — inline flag per row
+- [Phase 05-03]: English output in mock mode expected — Thai prompt exercised only with real OpenAI credentials
+- [Phase 05-03]: Proposal content sparseness in mock mode documented as quality gap for Phase 6 verification
 
 ## Blockers
 

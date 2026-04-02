@@ -76,12 +76,12 @@ Plans:
 **Goal:** Output quality meets "real presale engineer" standard
 **Requirements**: M5, S1
 **Depends on:** Phase 4
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
 - [x] 05-01-PLAN.md — Per-use-case RAG retrieval refactor + test fixtures
-- [ ] 05-02-PLAN.md — Solution prompt + proposal prompt rewrite for Thai enterprise
-- [ ] 05-03-PLAN.md — BOM validation script + human quality review
+- [x] 05-02-PLAN.md — Solution prompt + proposal prompt rewrite for Thai enterprise
+- [x] 05-03-PLAN.md — BOM validation script + human quality review
 
 **Exit criteria:** 3 real presale scenarios reviewed — all outputs rated "usable without major edits"
 
@@ -112,5 +112,5 @@ Plans:
 | 2 | User Authentication | Complete |
 | 3 | Chat Backend | Planning Complete |
 | 4 | Chat UI Frontend | Planning Complete |
-| 5 | Solution Quality & RAG | Planning Complete |
+| 5 | Solution Quality & RAG | Complete |
 | 6 | QA & Internal Release | Not Started |
