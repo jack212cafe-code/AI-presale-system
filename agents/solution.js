@@ -61,15 +61,16 @@ const solutionTextFormat = {
   }
 };
 
-export async function getKnowledge(requirements) {
+export async function _getKnowledgeWithDeps(requirements, deps) {
+  const { embedQueryFn, retrieveVectorFn, retrieveLocalFn, hasSupabaseFn, hasEmbeddingFn } = deps;
   const useCases = Array.isArray(requirements.use_cases) ? requirements.use_cases : [];
 
-  if (hasSupabaseAdmin() && hasEmbeddingConfig()) {
+  if (hasSupabaseFn() && hasEmbeddingFn()) {
     try {
       const results = await Promise.allSettled(
         useCases.map(async (useCase) => {
-          const embedding = await embedQuery(useCase);
-          return retrieveKnowledgeFromVector(embedding, 5);
+          const embedding = await embedQueryFn(useCase);
+          return retrieveVectorFn(embedding, 5);
         })
       );
 
@@ -95,7 +96,7 @@ export async function getKnowledge(requirements) {
     }
   }
 
-  const localResults = await Promise.allSettled(useCases.map((uc) => retrieveLocalKnowledge(uc, 5)));
+  const localResults = await Promise.allSettled(useCases.map((uc) => retrieveLocalFn(uc, 5)));
   const localFulfilled = localResults.filter((r) => r.status === "fulfilled").flatMap((r) => r.value);
   const byKey = new Map();
   for (const chunk of localFulfilled) {
@@ -108,6 +109,16 @@ export async function getKnowledge(requirements) {
     .sort((a, b) => (b.score || 0) - (a.score || 0))
     .slice(0, 5);
   return { chunks, retrieval_mode: "local_fallback" };
+}
+
+export async function getKnowledge(requirements) {
+  return _getKnowledgeWithDeps(requirements, {
+    embedQueryFn: embedQuery,
+    retrieveVectorFn: retrieveKnowledgeFromVector,
+    retrieveLocalFn: retrieveLocalKnowledge,
+    hasSupabaseFn: hasSupabaseAdmin,
+    hasEmbeddingFn: hasEmbeddingConfig
+  });
 }
 
 function buildMockSolution(requirements, knowledge, retrieval_mode) {
