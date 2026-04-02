@@ -1,0 +1,17 @@
+{
+  "customer_name": "Metro Retail Group",
+  "partner_type": "Distributor",
+  "industry": "Retail",
+  "primary_use_case": "Disaster recovery planning for critical ERP and POS systems",
+  "core_pain_point": "Partner teams need a faster way to produce credible DR recommendations without missing critical recovery assumptions.",
+  "desired_outcome": "Generate a reliable DR recommendation that can be reviewed internally and shared with the customer.",
+  "output_preference": "Structured recommendation",
+  "trust_priority": "Accuracy first",
+  "integration_needs": "Shareable output for sales and technical review",
+  "users": 1200,
+  "vm_count": 200,
+  "storage_tb": 120,
+  "budget_range_thb": "4M-6M THB",
+  "timeline": "Urgent - 60 days",
+  "notes": "Customer needs DR options mapped to budget and service tier expectations."
+}

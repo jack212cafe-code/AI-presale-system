@@ -1,0 +1,17 @@
+{
+  "customer_name": "Rapid Channel Team",
+  "partner_type": "System Integrator",
+  "industry": "Technology Services",
+  "primary_use_case": "General presale support",
+  "core_pain_point": "Sales sent a short customer brief and the presale owner still does not know what to ask next.",
+  "desired_outcome": "Get a usable direction plus the next few questions to ask without blocking on missing details.",
+  "output_preference": "Discovery summary",
+  "trust_priority": "Accuracy first",
+  "integration_needs": "",
+  "users": null,
+  "vm_count": null,
+  "storage_tb": null,
+  "budget_range_thb": "",
+  "timeline": "",
+  "notes": "Customer may want infrastructure refresh but exact scope is not known yet."
+}

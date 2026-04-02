@@ -1,0 +1,17 @@
+{
+  "customer_name": "SecureBank Corp",
+  "partner_type": "System Integrator",
+  "industry": "Finance",
+  "primary_use_case": "Network security modernization with NGFW and SOC",
+  "core_pain_point": "Legacy firewall cannot handle modern threat landscape, no centralized logging.",
+  "desired_outcome": "Next-gen firewall HA pair with centralized security management and logging.",
+  "output_preference": "Solution options",
+  "trust_priority": "Security compliance first",
+  "integration_needs": "Exportable proposal for security review board",
+  "users": 500,
+  "vm_count": 0,
+  "storage_tb": 5,
+  "budget_range_thb": "2M-4M THB",
+  "timeline": "Q3 2026",
+  "notes": "Needs NGFW HA pair, centralized logging, policy management. FortiGate preferred."
+}

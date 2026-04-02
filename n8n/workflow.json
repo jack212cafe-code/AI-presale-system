@@ -1,0 +1,97 @@
+{
+  "name": "AI Presale Phase 1 Starter",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "presale-intake",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "Webhook_Intake",
+      "name": "Webhook Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [260, 280]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items;"
+      },
+      "id": "Normalize_Intake",
+      "name": "Normalize Intake",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 280]
+    },
+    {
+      "parameters": {},
+      "id": "Discovery_Agent",
+      "name": "Discovery Agent",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [760, 280],
+      "notes": "Replace with AI Agent node or service call once the runtime is deployed."
+    },
+    {
+      "parameters": {},
+      "id": "Solution_Agent",
+      "name": "Solution Agent",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1020, 280]
+    },
+    {
+      "parameters": {},
+      "id": "BOM_Agent",
+      "name": "BOM Agent",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1280, 280]
+    },
+    {
+      "parameters": {},
+      "id": "Proposal_Agent",
+      "name": "Proposal Agent",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1540, 280]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"queued-for-review\"}"
+      },
+      "id": "Response",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1800, 280]
+    }
+  ],
+  "connections": {
+    "Webhook Intake": {
+      "main": [[{ "node": "Normalize Intake", "type": "main", "index": 0 }]]
+    },
+    "Normalize Intake": {
+      "main": [[{ "node": "Discovery Agent", "type": "main", "index": 0 }]]
+    },
+    "Discovery Agent": {
+      "main": [[{ "node": "Solution Agent", "type": "main", "index": 0 }]]
+    },
+    "Solution Agent": {
+      "main": [[{ "node": "BOM Agent", "type": "main", "index": 0 }]]
+    },
+    "BOM Agent": {
+      "main": [[{ "node": "Proposal Agent", "type": "main", "index": 0 }]]
+    },
+    "Proposal Agent": {
+      "main": [[{ "node": "Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {},
+  "pinData": {},
+  "meta": {
+    "templateReady": false
+  }
+}
+

@@ -1,0 +1,17 @@
+{
+  "customer_name": "BlueRiver Finance",
+  "partner_type": "System Integrator",
+  "industry": "Financial Services",
+  "primary_use_case": "Backup modernization and immutable recovery",
+  "core_pain_point": "Backup sizing and recovery positioning are inconsistent across presale engineers.",
+  "desired_outcome": "Produce a proposal-ready recommendation with clear recovery priorities and defensible assumptions.",
+  "output_preference": "Proposal-ready content",
+  "trust_priority": "Accuracy first",
+  "integration_needs": "Usable content for proposal assembly and technical validation",
+  "users": 300,
+  "vm_count": 70,
+  "storage_tb": 45,
+  "budget_range_thb": "1M-2M THB",
+  "timeline": "90 days",
+  "notes": "Needs immutable storage and clearer RPO/RTO definitions for audit readiness."
+}

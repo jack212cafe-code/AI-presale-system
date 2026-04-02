@@ -1,0 +1,17 @@
+{
+  "customer_name": "TotalTech Enterprise",
+  "partner_type": "Direct Customer",
+  "industry": "Government",
+  "primary_use_case": "Complete IT infrastructure modernization covering compute, backup, DR, and security",
+  "core_pain_point": "Aging infrastructure across all layers, no integrated backup or DR strategy.",
+  "desired_outcome": "End-to-end modern infrastructure with HCI, backup, DR, and network security.",
+  "output_preference": "Solution options",
+  "trust_priority": "Accuracy first",
+  "integration_needs": "Full proposal document for procurement committee",
+  "users": 1000,
+  "vm_count": 200,
+  "storage_tb": 120,
+  "budget_range_thb": "8M-15M THB",
+  "timeline": "Q4 2026",
+  "notes": "Requires HCI platform, immutable backup, cross-site DR, and NGFW. Multi-vendor acceptable."
+}

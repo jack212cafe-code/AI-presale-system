@@ -1,0 +1,17 @@
+{
+  "customer_name": "Acme Manufacturing",
+  "partner_type": "System Integrator",
+  "industry": "Manufacturing",
+  "primary_use_case": "HCI refresh with backup modernization",
+  "core_pain_point": "Presale discovery and solution packaging take too long and rely on inconsistent individual experience.",
+  "desired_outcome": "A trusted presale assistant should turn customer inputs into accurate solution recommendations quickly.",
+  "output_preference": "Solution options",
+  "trust_priority": "Accuracy first",
+  "integration_needs": "Exportable summary for internal review and customer follow-up",
+  "users": 550,
+  "vm_count": 140,
+  "storage_tb": 85,
+  "budget_range_thb": "2M-4M THB",
+  "timeline": "Q3 2026",
+  "notes": "Customer wants ransomware recovery options and prefers a simple management model."
+}

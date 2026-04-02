@@ -1,0 +1,17 @@
+{
+  "customer_name": "Channel Growth Alliance",
+  "partner_type": "Both",
+  "industry": "Technology Distribution",
+  "primary_use_case": "Multi-Agent SaaS platform for SI and distributor presale teams",
+  "core_pain_point": "Presale output quality varies too much and teams need trustworthy results without hiring more specialists.",
+  "desired_outcome": "Deliver a minimal product that feels like having a real presale engineer and proves recurring usage before monetization.",
+  "output_preference": "Structured recommendation",
+  "trust_priority": "Accuracy first",
+  "integration_needs": "Cloud delivery with simple onboarding and reusable output for partner teams",
+  "users": 120,
+  "vm_count": 0,
+  "storage_tb": 2,
+  "budget_range_thb": "Initial free usage phase, monetization later",
+  "timeline": "Launch in 90 days",
+  "notes": "Need SaaS delivery on cloud, minimal UI, trustworthy outputs, and a user experience that feels like having a real presale engineer."
+}

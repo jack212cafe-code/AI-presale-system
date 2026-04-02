@@ -1,0 +1,17 @@
+{
+  "customer_name": "Northwind Industrial",
+  "partner_type": "Distributor",
+  "industry": "Manufacturing",
+  "primary_use_case": "Infrastructure refresh with backup and DR",
+  "core_pain_point": "Customer asks for a low-cost refresh but also wants enterprise-grade resiliency, faster delivery, and minimal operational overhead.",
+  "desired_outcome": "Clarify the trade-offs and identify what must be confirmed before solution design and BOM work.",
+  "output_preference": "Structured recommendation",
+  "trust_priority": "Accuracy first",
+  "integration_needs": "Exportable summary for internal review",
+  "users": 350,
+  "vm_count": 120,
+  "storage_tb": 60,
+  "budget_range_thb": "Tight budget",
+  "timeline": "Urgent",
+  "notes": "Customer says they want HCI, DR, immutable backup, Dell preference, and premium support, but procurement asks to minimize cost and shorten lead time."
+}
