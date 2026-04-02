@@ -76,13 +76,12 @@ Plans:
 **Goal:** Output quality meets "real presale engineer" standard
 **Requirements**: M5, S1
 **Depends on:** Phase 4
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] Plan 1: Per-use-case retrieval (separate embedding query per use case, deduplicate)
-- [ ] Plan 2: Prompt tuning for solution agent (more specific guidance, KB-grounded)
-- [ ] Plan 3: BOM accuracy validation (spot-check 5 scenarios against manual BOM)
-- [ ] Plan 4: Proposal tone and structure review (Thai enterprise context)
+- [ ] 05-01-PLAN.md — Per-use-case RAG retrieval refactor + test fixtures
+- [ ] 05-02-PLAN.md — Solution prompt + proposal prompt rewrite for Thai enterprise
+- [ ] 05-03-PLAN.md — BOM validation script + human quality review
 
 **Exit criteria:** 3 real presale scenarios reviewed — all outputs rated "usable without major edits"
 
@@ -113,5 +112,5 @@ Plans:
 | 2 | User Authentication | Complete |
 | 3 | Chat Backend | Planning Complete |
 | 4 | Chat UI Frontend | Planning Complete |
-| 5 | Solution Quality & RAG | Not Started |
+| 5 | Solution Quality & RAG | Planning Complete |
 | 6 | QA & Internal Release | Not Started |
