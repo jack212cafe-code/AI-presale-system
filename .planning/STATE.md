@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Office Internal Release
 status: completed
-last_updated: "2026-03-31T23:39:33.873Z"
+last_updated: "2026-04-02T07:00:00.000Z"
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 12
-  completed_plans: 10
+  completed_phases: 4
+  total_plans: 15
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,15 +18,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Drop a customer brief → get a trustworthy exportable proposal in minutes
-**Current focus:** Phase 04 — chat-ui-frontend
+**Current focus:** Phase 05 — solution-quality-rag-hardening
 **Milestone:** v1.0 — Office Internal Release
 
 ## Current Phase
 
-**Phase 4 of 6: Chat UI Frontend**
-**Current Plan: 3 of 3**
-Status: Plan 04-03 Complete
-Next action: Continue to Plan 04-04 (Chat JavaScript)
+**Phase 5 of 6: Solution Quality & RAG Hardening**
+**Current Plan: 1 of 3**
+Status: Plan 05-01 Complete
+Next action: Continue to Plan 05-02 (Solution prompt + proposal prompt rewrite)
 
 ## Decisions
 
@@ -51,6 +51,11 @@ Next action: Continue to Plan 04-04 (Chat JavaScript)
 - [Phase 04-chat-ui-frontend]: proposal_url field confirmed (not proposal_path) in download endpoint
 - [Phase 04-chat-ui-frontend]: All CSS inline in chat.html — no external stylesheet (no build step constraint)
 - [Phase 04-chat-ui-frontend]: chat.js uses CDN globals (marked, DOMPurify) — no module imports
+- [Phase 05-01]: Per-use-case retrieval uses Promise.allSettled; dedup by chunk.id (vector) or source_key (local); cap at 5
+- [Phase 05-01]: _getKnowledgeWithDeps exported for DI testing (mock.module unavailable in Node 24 ESM)
+- [Phase 05-solution-quality-rag-hardening]: Thai enterprise framing replaces SaaS framing in solution prompt (D-04)
+- [Phase 05-solution-quality-rag-hardening]: All 6 vendor families named explicitly in solution prompt to prevent hallucination (D-05)
+- [Phase 05-solution-quality-rag-hardening]: CRITICAL Thai language instruction placed at top of proposal prompt (D-07)
 
 ## Blockers
 

@@ -76,10 +76,10 @@ Plans:
 **Goal:** Output quality meets "real presale engineer" standard
 **Requirements**: M5, S1
 **Depends on:** Phase 4
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 05-01-PLAN.md — Per-use-case RAG retrieval refactor + test fixtures
+- [x] 05-01-PLAN.md — Per-use-case RAG retrieval refactor + test fixtures
 - [ ] 05-02-PLAN.md — Solution prompt + proposal prompt rewrite for Thai enterprise
 - [ ] 05-03-PLAN.md — BOM validation script + human quality review
 
