@@ -525,6 +525,16 @@ export async function appHandler(request, response) {
         userId
       });
 
+      if (result.ok === false || result.stage === "error") {
+        return json(response, 200, {
+          ok: false,
+          error: result.text,
+          conversation_id: result.conversation_id,
+          project_id: result.project_id,
+          stage: result.stage
+        });
+      }
+
       return json(response, result.created ? 201 : 200, {
         ok: true,
         conversation_id: result.conversation_id,
