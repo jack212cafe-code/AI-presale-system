@@ -11,6 +11,7 @@ let activeProjectId = null;
 let currentUser = null;
 let loadingTimer = null;
 let loadingBubble = null;
+let lastUserMessage = null;
 
 async function apiFetch(url, options = {}) {
   const response = await fetch(url, {
@@ -86,6 +87,24 @@ function appendAssistantBubble(markdown, stage) {
   return msg;
 }
 
+function appendErrorBubble(errorText) {
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.innerHTML = `
+    <div class="message-label">AI Presale Assistant</div>
+    <div class="bubble assistant error-bubble">
+      <span class="error-text">${escapeHtml(errorText)}</span>
+      <button class="retry-btn" type="button">ลองอีกครั้ง</button>
+    </div>
+  `;
+  msg.querySelector(".retry-btn").addEventListener("click", () => {
+    msg.remove();
+    if (lastUserMessage) sendMessage(lastUserMessage);
+  });
+  thread.appendChild(msg);
+  scrollToBottom();
+}
+
 const STAGES = [
   "กำลังวิเคราะห์ความต้องการ...",
   "กำลังออกแบบโซลูชัน...",
@@ -125,6 +144,7 @@ function stopLoadingBubble() {
 async function sendMessage(text) {
   if (!text || !text.trim()) return;
   hideError();
+  lastUserMessage = text.trim();
   const es = document.querySelector("#empty-state");
   if (es) es.remove();
   appendUserBubble(text.trim());
@@ -137,6 +157,10 @@ async function sendMessage(text) {
       body: JSON.stringify({ message: text.trim(), conversation_id: activeConversationId })
     });
     stopLoadingBubble();
+    if (payload.ok === false || payload.stage === "error") {
+      appendErrorBubble(payload.error || payload.text || "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      return;
+    }
     if (!response.ok) {
       showError(payload.error || "ไม่สามารถส่งข้อความได้ กรุณาลองใหม่อีกครั้ง");
       return;
