@@ -92,13 +92,12 @@ Plans:
 **Goal:** Stable enough for daily office use
 **Requirements**: S2
 **Depends on:** Phase 5
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] Plan 1: End-to-end test suite for chat API (multi-turn scenarios)
-- [ ] Plan 2: Error handling in chat (agent failures, timeouts, KB misses)
-- [ ] Plan 3: Performance check (pipeline < 60s, chat < 10s per turn)
-- [ ] Plan 4: Internal release: deploy to office server, onboard team
+- [ ] 06-01-PLAN.md — Error handling hardening: timeout, KB miss, consistent error contract in lib/chat.js + server.js
+- [ ] 06-02-PLAN.md — E2E chat error-path tests + frontend error rendering with retry button
+- [ ] 06-03-PLAN.md — Perf-check script, PM2 deployment config, Thai onboarding guide, human verification
 
 **Exit criteria:** Team uses system for 1 real week without critical failures; feedback collected
 
@@ -113,4 +112,4 @@ Plans:
 | 3 | Chat Backend | Planning Complete |
 | 4 | Chat UI Frontend | Planning Complete |
 | 5 | Solution Quality & RAG | Complete |
-| 6 | QA & Internal Release | Not Started |
+| 6 | QA & Internal Release | Planning Complete |
