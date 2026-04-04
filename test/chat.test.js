@@ -102,6 +102,47 @@ describe("POST /api/chat", () => {
   //   - Second message with conversation_id + "1" returns stage:complete with BOM text
 });
 
+describe("error handling (S2)", () => {
+  it("first turn returns stage awaiting_selection with solution text", async () => {
+    const { statusCode, body } = await makeAuthenticatedRequest("POST", "/api/chat", {
+      message: "HCI + Backup for 200 users, 50 VMs"
+    });
+    assert.equal(statusCode, 201);
+    assert.equal(body.ok, true);
+    assert.equal(body.stage, "awaiting_selection");
+    assert.ok(body.text.length > 0, "Should return solution options text");
+    assert.ok(body.conversation_id, "Should return conversation_id");
+    assert.ok(body.project_id, "Should return project_id");
+  });
+
+  it("invalid conversation_id returns ok:false", async () => {
+    const { body } = await makeAuthenticatedRequest("POST", "/api/chat", {
+      conversation_id: "00000000-0000-0000-0000-999999999999",
+      message: "select option 1"
+    });
+    assert.equal(body.ok, false);
+    assert.equal(typeof body.error, "string");
+    assert.ok(body.error.length > 0);
+  });
+
+  it("empty message returns 400 with error", async () => {
+    const { statusCode, body } = await makeAuthenticatedRequest("POST", "/api/chat", {
+      message: "   "
+    });
+    assert.equal(statusCode, 400);
+    assert.equal(body.ok, false);
+  });
+
+  // NOTE: Multi-turn stage progression tests (D-03) require Supabase.
+  // In mock mode, getConversationById returns null on turn 2.
+  // To test full progression (awaiting_selection → complete):
+  //   1. Remove AI_PRESALE_FORCE_LOCAL=1
+  //   2. Set SUPABASE_URL and SUPABASE_SERVICE_KEY
+  //   3. Run: node --test test/chat.test.js
+  //
+  // Expected: turn 1 → stage:awaiting_selection, turn 2 with "1" → stage:complete with BOM text
+});
+
 describe("Phase 04 endpoints", () => {
   before(() => {
     mkdirSync("chat", { recursive: true });
