@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Office Internal Release
 status: completed
-last_updated: "2026-04-02T06:06:20.221Z"
+last_updated: "2026-04-04T10:11:36.949Z"
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
+  completed_phases: 6
+  total_plans: 18
+  completed_plans: 18
 ---
 
 # Project State
@@ -18,7 +18,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Drop a customer brief → get a trustworthy exportable proposal in minutes
-**Current focus:** Phase 05 — solution-quality-rag-hardening
+**Current focus:** Phase 06 — qa-internal-release
 **Milestone:** v1.0 — Office Internal Release
 
 ## Current Phase
@@ -59,6 +59,15 @@ Next action: Continue to Phase 6 (QA & Internal Release)
 - [Phase 05-solution-quality-rag-hardening]: BOM validation uses KNOWN_SKUS Set for catalog match checking — inline flag per row
 - [Phase 05-03]: English output in mock mode expected — Thai prompt exercised only with real OpenAI credentials
 - [Phase 05-03]: Proposal content sparseness in mock mode documented as quality gap for Phase 6 verification
+- [Phase 06-qa-internal-release]: withTimeout wraps both stage handlers at 60s for S2 compliance
+- [Phase 06-qa-internal-release]: HTTP 200 (not 500) for handled errors — frontend gets parseable JSON
+- [Phase 06-02]: Frontend detects payload.ok === false at application layer (HTTP 200) separately from HTTP-level errors
+- [Phase 06-02]: appendErrorBubble renders inline error for ok:false; retry button re-sends lastUserMessage
+- [Phase 06-qa-internal-release]: ecosystem.config.cjs uses .cjs extension because package.json has type:module
+- [Phase 06-qa-internal-release]: perf-check.js aborts without OPENAI_API_KEY — no silent mock-mode runs
+- [Phase 06-03]: ecosystem.config.cjs uses .cjs extension because package.json has type:module
+- [Phase 06-03]: perf-check.js aborts without OPENAI_API_KEY — no silent mock-mode runs
+- [Phase 06-03]: ONBOARDING.md all-Thai with code commands as-is per D-12
 
 ## Blockers
 
