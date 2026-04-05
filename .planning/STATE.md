@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: — Office Internal Release
-status: completed
-last_updated: "2026-04-04T10:11:36.949Z"
+milestone: v1.1
+milestone_name: — Blueprint-Driven Agent Intelligence
+status: in_progress
+last_updated: "2026-04-05T07:00:55Z"
 progress:
   total_phases: 6
   completed_phases: 6
@@ -18,15 +18,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Drop a customer brief → get a trustworthy exportable proposal in minutes
-**Current focus:** Phase 06 — qa-internal-release
-**Milestone:** v1.0 — Office Internal Release
+**Current focus:** Phase 08 — customer-memory
+**Milestone:** v1.1 — Blueprint-Driven Agent Intelligence
 
 ## Current Phase
 
-**Phase 5 of 6: Solution Quality & RAG Hardening**
-**Current Plan: 3 of 3 — COMPLETE**
-Status: Plan 05-03 Complete — Phase 5 Complete
-Next action: Continue to Phase 6 (QA & Internal Release)
+**Phase 08: Customer Memory**
+**Current Plan: 1 of TBD — Plan 01 COMPLETE**
+Status: Plan 08-01 Complete — data layer done, ready for Plan 02 (chat integration)
+Next action: Continue to Plan 08-02 (wire memory functions into chat)
 
 ## Decisions
 
