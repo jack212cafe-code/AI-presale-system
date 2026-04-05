@@ -176,7 +176,12 @@ Plans:
   2. When starting a project, user is notified if proposals for the same customer name already exist and can view them
   3. Rejected solution options from prior projects are stored and surfaced when a related project is started
   4. Vendor preferences (preferred and disliked) stored per user visibly influence the ranking of options in new solutions
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — user_preferences schema + lib/user-preferences.js + new exports in lib/projects.js + unit tests
+- [ ] 08-02-PLAN.md — Wire memory into handleDiscoveryQuestions + solution agent + vendor preference API + integration tests
+- [ ] 08-03-PLAN.md — Human verification of all four customer memory features in live chat
 
 ### Phase 9: Enriched Handoff Artifact
 **Goal**: Proposals contain the full handoff context a presale engineer needs — risks, open questions, recommended next actions, and options considered
@@ -210,6 +215,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 7. Discovery Agent + Classifier | 0/3 | Planning Complete | - |
 | 7.1. Solution & BOM Accuracy | 0/0 | Not started | - |
-| 8. Customer Memory | 0/0 | Not started | - |
+| 8. Customer Memory | 0/3 | Planned    |  |
 | 9. Enriched Handoff Artifact | 0/0 | Not started | - |
 | 10. Feedback Loop + UX Fixes | 0/0 | Not started | - |

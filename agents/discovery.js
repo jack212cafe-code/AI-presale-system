@@ -11,6 +11,22 @@ import { validateRequirements } from "../lib/validation.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export const CATEGORY_TO_USE_CASES = {
+  "HCI":        ["HCI"],
+  "DR":         ["Disaster Recovery"],
+  "Backup":     ["Backup & Recovery"],
+  "Security":   ["Cybersecurity"],
+  "Full-stack": ["HCI", "Disaster Recovery", "Backup & Recovery", "Cybersecurity"]
+};
+
+const DISCOVERY_DEFAULTS = {
+  vm_count: 50,
+  storage_tb: 20,
+  users: 100,
+  budget_range_thb: "3,000,000-5,000,000 THB",
+  network: "10G"
+};
+
 function deriveUseCases(intake) {
   const content = `${intake.primary_use_case} ${intake.notes}`.toLowerCase();
   const useCases = [];
@@ -30,6 +46,20 @@ function deriveUseCases(intake) {
 async function loadPrompt() {
   return readFile(path.join(__dirname, "_prompts", "discovery.md"), "utf8");
 }
+
+const discoveryQuestionsFormat = {
+  type: "json_schema",
+  name: "discovery_questions_output",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      question_text: { type: "string" }
+    },
+    required: ["question_text"]
+  }
+};
 
 const discoveryTextFormat = {
   type: "json_schema",
@@ -107,7 +137,15 @@ const discoveryTextFormat = {
         type: "array",
         items: { type: "string" }
       },
-      source_mode: { type: ["string", "null"] }
+      source_mode: { type: ["string", "null"] },
+      category: {
+        type: "string",
+        enum: ["HCI", "DR", "Backup", "Security", "Full-stack"]
+      },
+      assumptions_applied: {
+        type: "array",
+        items: { type: "string" }
+      }
     },
     required: [
       "customer_profile",
@@ -124,30 +162,32 @@ const discoveryTextFormat = {
       "timeline",
       "constraints",
       "gaps",
-      "source_mode"
+      "source_mode",
+      "category",
+      "assumptions_applied"
     ]
   }
 };
 
-function buildMockRequirements(intake) {
+function buildMockRequirements(intake, mode) {
+  if (mode === "generate_questions") {
+    return {
+      question_text: "สวัสดีครับ ผมเข้าใจว่าคุณต้องการระบบโครงสร้างพื้นฐานสำหรับองค์กร ช่วยบอกรายละเอียดเพิ่มเติมได้ไหมครับ เช่น มี VM อยู่ประมาณกี่ตัว storage รวมประมาณกี่ TB จำนวน user ทั้งหมด network switch ที่ใช้อยู่เป็น 10G หรือ 25G และงบประมาณคร่าวๆ ครับ"
+    };
+  }
+
   return {
     customer_profile: {
       name: intake.customer_name,
-      industry: intake.industry,
-      environment: "Cloud SaaS for SI/Distributor partners"
+      industry: intake.industry ?? null,
+      environment: "On-premise enterprise infrastructure"
     },
     partner_context: {
       partner_type: intake.partner_type,
       operating_model: "Busy generalist presale workflow",
       engagement_motion: "Supports sales conversations and customer follow-up"
     },
-    use_cases: [
-      "Multi-Agent SaaS",
-      "Partner Enablement",
-      "Presale Productivity",
-      "Results Trust",
-      ...deriveUseCases(intake)
-    ],
+    use_cases: deriveUseCases(intake),
     pain_points: [intake.core_pain_point],
     desired_outcomes: [intake.desired_outcome],
     trust_requirements: [intake.trust_priority],
@@ -163,15 +203,17 @@ function buildMockRequirements(intake) {
       "User can identify the next key questions without extra presale escalation"
     ],
     scale: {
-      users: intake.users,
-      vm_count: intake.vm_count,
-      storage_tb: intake.storage_tb
+      users: intake.users ?? DISCOVERY_DEFAULTS.users,
+      vm_count: intake.vm_count ?? DISCOVERY_DEFAULTS.vm_count,
+      storage_tb: intake.storage_tb ?? DISCOVERY_DEFAULTS.storage_tb
     },
-    budget_range: intake.budget_range_thb,
-    timeline: intake.timeline,
+    budget_range: intake.budget_range_thb ?? DISCOVERY_DEFAULTS.budget_range_thb,
+    timeline: intake.timeline ?? null,
     constraints: intake.notes ? [intake.notes] : [],
     gaps: intake.users ? [] : ["User count not confirmed"],
-    source_mode: "mock"
+    source_mode: "mock",
+    category: "HCI",
+    assumptions_applied: []
   };
 }
 
@@ -192,14 +234,14 @@ function sanitizeRequirements(output, intake) {
   const customerProfile =
     requirements.customer_profile && typeof requirements.customer_profile === "object"
       ? requirements.customer_profile
-      : { name: intake.customer_name, industry: intake.industry };
+      : { name: intake.customer_name, industry: intake.industry ?? null };
   const scale =
     requirements.scale && typeof requirements.scale === "object"
       ? requirements.scale
       : {
-          users: intake.users,
-          vm_count: intake.vm_count,
-          storage_tb: intake.storage_tb
+          users: intake.users ?? null,
+          vm_count: intake.vm_count ?? null,
+          storage_tb: intake.storage_tb ?? null
         };
 
   return {
@@ -234,34 +276,74 @@ function sanitizeRequirements(output, intake) {
     recommended_next_questions: toArray(requirements.recommended_next_questions),
     success_criteria: toArray(requirements.success_criteria),
     scale,
-    budget_range: requirements.budget_range ?? intake.budget_range_thb,
-    timeline: requirements.timeline ?? intake.timeline,
+    budget_range: requirements.budget_range ?? intake.budget_range_thb ?? null,
+    timeline: requirements.timeline ?? intake.timeline ?? null,
     constraints: toArray(requirements.constraints),
     gaps: toArray(requirements.gaps),
-    source_mode: requirements.source_mode ?? "live"
+    source_mode: requirements.source_mode ?? "live",
+    category: requirements.category ?? null,
+    assumptions_applied: computeAssumptions(scale, requirements.budget_range, intake)
   };
 }
 
+function computeAssumptions(scale, budgetRange, intake) {
+  const assumptions = [];
+  if (scale.vm_count === DISCOVERY_DEFAULTS.vm_count && !intake.vm_count) {
+    assumptions.push(`ใช้ค่าเริ่มต้น: VM ${DISCOVERY_DEFAULTS.vm_count} ตัว`);
+  }
+  if (scale.storage_tb === DISCOVERY_DEFAULTS.storage_tb && !intake.storage_tb) {
+    assumptions.push(`ใช้ค่าเริ่มต้น: Storage ${DISCOVERY_DEFAULTS.storage_tb} TB`);
+  }
+  if (scale.users === DISCOVERY_DEFAULTS.users && !intake.users) {
+    assumptions.push(`ใช้ค่าเริ่มต้น: ผู้ใช้ ${DISCOVERY_DEFAULTS.users} คน`);
+  }
+  if ((!budgetRange || budgetRange === "Unknown") && (!intake.budget_range_thb || intake.budget_range_thb === "Unknown")) {
+    assumptions.push(`ใช้ค่าเริ่มต้น: งบ ${DISCOVERY_DEFAULTS.budget_range_thb}`);
+  }
+  return assumptions;
+}
+
 export async function runDiscoveryAgent(intake, options = {}) {
+  const mode = options.mode ?? "parse_answers";
+  const discoveryReply = options.discoveryReply ?? null;
   const prompt = await loadPrompt();
   const projectObjective = formatProjectObjective();
+
+  const textFormat = mode === "generate_questions" ? discoveryQuestionsFormat : discoveryTextFormat;
+
+  const userPrompt =
+    mode === "generate_questions"
+      ? JSON.stringify({ mode: "generate_questions", brief: intake }, null, 2)
+      : JSON.stringify({ mode: "parse_answers", brief: intake, discovery_reply: discoveryReply, defaults: DISCOVERY_DEFAULTS }, null, 2);
 
   const output = await withAgentLogging(
     {
       agentName: "discovery",
       projectId: options.projectId,
       modelUsed: config.openai.models.discovery,
-      input: intake
+      input: { mode, intake }
     },
     () =>
       generateJsonWithOpenAI({
         systemPrompt: `${prompt}\n\n[PROJECT OBJECTIVE]\n${projectObjective}`,
-        userPrompt: JSON.stringify(intake, null, 2),
+        userPrompt,
         model: config.openai.models.discovery,
-        textFormat: discoveryTextFormat,
-        mockResponseFactory: async () => buildMockRequirements(intake)
+        textFormat,
+        mockResponseFactory: async () => buildMockRequirements(intake, mode)
       })
   );
 
-  return validateRequirements(sanitizeRequirements(output, intake));
+  if (mode === "generate_questions") {
+    return output;
+  }
+
+  const sanitized = sanitizeRequirements(output, intake);
+  const validated = validateRequirements(sanitized);
+
+  // Map category to use_cases for downstream solution agent routing
+  if (validated.category && CATEGORY_TO_USE_CASES[validated.category]) {
+    validated.use_cases = CATEGORY_TO_USE_CASES[validated.category];
+  }
+
+  return validated;
 }

@@ -20,6 +20,7 @@ import {
   buildExpiredUserSessionCookie,
   createUserSession,
   destroyUserSession,
+  ensureUsersSeeded,
   getSessionUser,
   getSessionUserId,
   getUserSessionToken,
@@ -38,6 +39,7 @@ import { getMessagesByConversation, getConversationsByProject } from "./lib/conv
 import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments } from "./lib/supabase.js";
 import { config } from "./lib/config.js";
 import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } from "./knowledge_base/raw-import-lib.js";
+import { upsertVendorPreference } from "./lib/user-preferences.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -590,6 +592,22 @@ export async function appHandler(request, response) {
     }
   }
 
+  if (request.method === "POST" && url.pathname === "/api/preferences/vendor") {
+    if (!requireUserAuth(request, response)) return;
+    try {
+      const body = await parseBody(request);
+      const { vendor, sentiment } = body;
+      if (!vendor || !["preferred", "disliked"].includes(sentiment)) {
+        return json(response, 400, { error: "vendor (string) and sentiment ('preferred'|'disliked') required" });
+      }
+      const userId = getSessionUserId(request);
+      const result = await upsertVendorPreference(userId, vendor, sentiment);
+      return json(response, 200, { ok: true, saved: result.saved });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
   return json(response, 404, { error: "Route not found" });
 }
 
@@ -601,5 +619,6 @@ if (isMainModule) {
   const server = createAppServer();
   server.listen(config.port, () => {
     console.log(`AI Presale intake server listening on http://localhost:${config.port}`);
+    ensureUsersSeeded().catch((err) => console.warn("[seed] failed:", err.message));
   });
 }

@@ -1,7 +1,9 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 process.env.AI_PRESALE_FORCE_LOCAL = "1";
 process.env.ADMIN_PORTAL_PASSWORD = "test-admin-password";
@@ -103,14 +105,14 @@ describe("POST /api/chat", () => {
 });
 
 describe("error handling (S2)", () => {
-  it("first turn returns stage awaiting_selection with solution text", async () => {
+  it("first turn returns stage discovery_questions with Thai question text", async () => {
     const { statusCode, body } = await makeAuthenticatedRequest("POST", "/api/chat", {
       message: "HCI + Backup for 200 users, 50 VMs"
     });
     assert.equal(statusCode, 201);
     assert.equal(body.ok, true);
-    assert.equal(body.stage, "awaiting_selection");
-    assert.ok(body.text.length > 0, "Should return solution options text");
+    assert.equal(body.stage, "discovery_questions");
+    assert.ok(body.text.length > 0, "Should return discovery question text");
     assert.ok(body.conversation_id, "Should return conversation_id");
     assert.ok(body.project_id, "Should return project_id");
   });
@@ -133,29 +135,55 @@ describe("error handling (S2)", () => {
     assert.equal(body.ok, false);
   });
 
-  // NOTE: Multi-turn stage progression tests (D-03) require Supabase.
-  // In mock mode, getConversationById returns null on turn 2.
-  // To test full progression (awaiting_selection → complete):
+  it("POST /api/chat first message returns discovery_questions stage (DISC-01, DISC-04)", async () => {
+    const { statusCode, body } = await makeAuthenticatedRequest("POST", "/api/chat", {
+      message: "ต้องการระบบ HCI สำหรับ 100 VM"
+    });
+    assert.equal(statusCode, 201);
+    assert.equal(body.stage, "discovery_questions");
+    assert.ok(body.text, "response must have text");
+    assert.ok(body.text.length > 10, "question text must be non-trivial");
+    assert.ok(body.conversation_id, "must return conversation_id");
+    assert.equal(body.ok, true);
+  });
+
+  // NOTE: Multi-turn discovery flow tests (DISC-02, DISC-04) require Supabase.
+  // In mock mode, getConversationById returns null on turn 2 so multi-turn flows
+  // cannot be tested without a real database.
+  //
+  // To test full discovery flow with Supabase:
   //   1. Remove AI_PRESALE_FORCE_LOCAL=1
   //   2. Set SUPABASE_URL and SUPABASE_SERVICE_KEY
   //   3. Run: node --test test/chat.test.js
   //
-  // Expected: turn 1 → stage:awaiting_selection, turn 2 with "1" → stage:complete with BOM text
+  // Expected flow:
+  //   Turn 1 (no conversationId) → stage:discovery_questions with Thai question text
+  //   Turn 2 (with conversationId, discovery reply) → stage:awaiting_selection with solution options
+  //   Turn 3 (with conversationId, "1") → stage:complete with BOM text
 });
 
 describe("Phase 04 endpoints", () => {
+  let chatCreated = false;
+  let loginCreated = false;
+
   before(() => {
-    mkdirSync("chat", { recursive: true });
-    mkdirSync("login", { recursive: true });
-    writeFileSync("chat/chat.html", "<!DOCTYPE html><html><body>chat</body></html>");
-    writeFileSync("chat/chat.js", "// placeholder");
-    writeFileSync("login/login.html", "<!DOCTYPE html><html><body>login</body></html>");
-    writeFileSync("login/login.js", "// placeholder");
+    if (!existsSync("chat/chat.html")) {
+      mkdirSync("chat", { recursive: true });
+      writeFileSync("chat/chat.html", "<!DOCTYPE html><html><body>chat</body></html>");
+      writeFileSync("chat/chat.js", "// placeholder");
+      chatCreated = true;
+    }
+    if (!existsSync("login/login.html")) {
+      mkdirSync("login", { recursive: true });
+      writeFileSync("login/login.html", "<!DOCTYPE html><html><body>login</body></html>");
+      writeFileSync("login/login.js", "// placeholder");
+      loginCreated = true;
+    }
   });
 
   after(() => {
-    rmSync("chat", { recursive: true, force: true });
-    rmSync("login", { recursive: true, force: true });
+    if (chatCreated) rmSync("chat", { recursive: true, force: true });
+    if (loginCreated) rmSync("login", { recursive: true, force: true });
   });
 
   it("GET /chat returns 200 with text/html", async () => {

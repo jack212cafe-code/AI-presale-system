@@ -1,73 +1,100 @@
-# Requirements — AI Presale System v1.0
+# Requirements — AI Presale System v1.1
 
-**Milestone:** v1.0 — Internal office use
-**Scope:** Complete pipeline + Chat UI for team testing
-
----
-
-## Must Have (MVP)
-
-### M1 — Complete Agent Pipeline (end-to-end in server)
-- Full pipeline callable via single API: intake → discovery → solution → BOM → proposal
-- solution_json, bom_json, proposal_url all persisted to projects table
-- Streaming or progressive responses (not blocking UI for 30s)
-
-### M2 — Chat UI (multi-turn, browser)
-- Chat interface in browser: input field, message thread, assistant replies
-- Multi-turn: system maintains context within a project conversation
-- Thai/English input accepted
-- Shows solution options, BOM table, and download link inline
-
-### M3 — User Authentication
-- Login with username/password (simple, for office team ~5 people)
-- Sessions persist across browser closes
-- Each user has their own project history
-
-### M4 — Cross-session Project History
-- List of past projects accessible after login
-- Can click into a past project and see the conversation + outputs
-- Can download DOCX from past projects
-
-### M5 — Solution Quality
-- Solution output reads like a real presale recommendation (not generic)
-- BOM pricing accurate using 25 SKUs in pricing_catalog
-- Proposal DOCX professionally formatted and directly usable
+**Milestone:** v1.1 — Blueprint-Driven Agent Intelligence
+**Scope:** Discovery dialog, Request classifier, Customer memory, Enriched handoff, Feedback loop
+**Continues from:** v1.0 (REQ-IDs continue from existing M1–S3)
 
 ---
 
-## Should Have
+## Milestone v1.1 Requirements
 
-### S1 — RAG Quality Improvement
-- Per-use-case retrieval (separate queries per use case, merge results)
-- retrieval_mode visible in output for debugging
+### DISC — Discovery Agent
 
-### S2 — Error handling in chat
-- If agent fails mid-pipeline, chat shows useful error (not blank)
-- Can retry from failed step
+- [ ] **DISC-01**: User is prompted with 3–4 targeted questions before solution is generated (use case type, scale, budget, existing infra)
+- [ ] **DISC-02**: System classifies the request into one of: HCI / DR / Backup / Security / Full-stack — and uses this to route to the appropriate knowledge retrieval
+- [ ] **DISC-03**: If the user cannot answer a discovery question, system proceeds with industry-standard defaults and documents the assumptions explicitly in the proposal
+- [ ] **DISC-04**: Discovery completes in a single conversational round-trip (not a multi-step interview blocking the user)
 
-### S3 — KB quality
-- At least 50+ KB entries for good retrieval coverage
-- Real pricing data for top 5 vendors
+### ACC — Solution & BOM Accuracy
+
+- [ ] **ACC-01**: BOM agent outputs specific storage capacity in TB for every storage item (not just "NVMe SSD")
+- [ ] **ACC-02**: Solution agent validates M365 plan against user_count — flags M365 Business plan when user_count > 300, recommends E3/E5
+- [ ] **ACC-03**: Solution agent applies Windows Server Datacenter core licensing model: states minimum core pack count required (min 16 cores/socket × socket count × node count)
+- [ ] **ACC-04**: Solution agent commits to one storage architecture (Ceph vs local NVMe) with explicit one-line rationale derived from discovered network capability
+- [ ] **ACC-05**: Solution agent includes compute sizing rationale: estimated VM count × average RAM per VM = node RAM target
+
+### MEM — Customer Memory
+
+- [x] **MEM-01**: Project is automatically named from customer/use case context extracted during discovery (replaces "Chat Project")
+- [x] **MEM-02**: Rejected solution options are stored per project and surfaced if user starts a related project
+- [x] **MEM-03**: Preferred and disliked vendors are stored per user and influence future solution ranking
+- [x] **MEM-04**: When starting a new project, system checks if proposals for the same customer name exist and offers to show them
+
+### HAND — Enriched Handoff Artifact
+
+- [ ] **HAND-01**: Proposal includes a Risks section listing key risks of the selected solution (e.g., vendor lock-in, licensing cost, support SLA)
+- [ ] **HAND-02**: Proposal includes a Missing Information section listing what the engineer still needs to confirm before quoting (e.g., network topology, rack space)
+- [ ] **HAND-03**: Proposal includes a Next Steps section with actionable items for the engineer (e.g., "Send BOM to distributor", "Schedule sizing workshop")
+- [ ] **HAND-04**: Proposal includes an Options Considered section showing non-selected options with one-line rationale for why they were not recommended
+
+### FEED — Feedback Loop
+
+- [ ] **FEED-01**: After proposal is displayed in chat, user sees thumbs up / thumbs down buttons
+- [ ] **FEED-02**: Feedback rating (positive/negative) is stored in Supabase linked to project ID, user ID, and timestamp
+- [ ] **FEED-03**: Admin portal shows a feedback summary table (project, rating, date)
+
+### UX — UX Fixes (from v1.0 UAT)
+
+- [ ] **UX-01**: Chat input remains active after proposal is generated — user can type follow-up questions or request revisions
+- [ ] **UX-02**: Proposal download shows only as a button — local file path is never exposed in the chat UI
 
 ---
 
-## Won't Have (this milestone)
+## Future Requirements (Deferred)
 
-- n8n orchestration — defer to v2.0
-- Human approval gate — defer (team self-reviews)
-- SaaS billing/subscription — defer to v2.0
-- Multi-tenant / org management — defer to v2.0
-- Line/email notifications — defer to v2.0
-- Public deployment — defer
+- Discovery via voice input — defer to v2.0
+- Multi-language proposal output selection — defer
+- CRM integration (pull customer data) — defer
+- Automatic feedback-driven prompt improvement — defer
+- Line/email notifications when proposal ready — defer
 
 ---
 
-## Acceptance Criteria
+## Out of Scope (this milestone)
 
-| Requirement | Acceptance Test |
-|-------------|-----------------|
-| M1 Pipeline | POST /api/pipeline with HCI brief → returns solution + BOM + proposal_path in <60s |
-| M2 Chat UI | User types Thai brief → sees solution options + BOM table + download link in chat |
-| M3 Auth | Login → session persists after browser close → /chat works |
-| M4 History | After login → see list of past projects → click → see full conversation |
-| M5 Quality | 3 presale engineers review 3 outputs: all rated "usable without major edits" |
+| Feature | Reason |
+|---------|--------|
+| n8n orchestration | Node.js pipeline sufficient at team scale |
+| SaaS billing/subscription | Internal-only use until v2.0 |
+| Multi-tenant org management | Single-user team for now |
+| Public deployment | Pending internal validation |
+| Human approval gate | Team self-reviews; gate adds friction |
+
+---
+
+## Traceability
+
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| DISC-01 | Phase 7 | Pending |
+| DISC-02 | Phase 7 | Pending |
+| DISC-03 | Phase 7 | Pending |
+| DISC-04 | Phase 7 | Pending |
+| ACC-01 | Phase 7.1 | Pending |
+| ACC-02 | Phase 7.1 | Pending |
+| ACC-03 | Phase 7.1 | Pending |
+| ACC-04 | Phase 7.1 | Pending |
+| ACC-05 | Phase 7.1 | Pending |
+| MEM-01 | Phase 8 | Complete |
+| MEM-02 | Phase 8 | Complete |
+| MEM-03 | Phase 8 | Complete |
+| MEM-04 | Phase 8 | Complete |
+| HAND-01 | Phase 9 | Pending |
+| HAND-02 | Phase 9 | Pending |
+| HAND-03 | Phase 9 | Pending |
+| HAND-04 | Phase 9 | Pending |
+| FEED-01 | Phase 10 | Pending |
+| FEED-02 | Phase 10 | Pending |
+| FEED-03 | Phase 10 | Pending |
+| UX-01 | Phase 10 | Pending |
+| UX-02 | Phase 10 | Pending |

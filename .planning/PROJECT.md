@@ -1,5 +1,18 @@
 # AI Presale System
 
+## Current Milestone: v1.1 Blueprint-Driven Agent Intelligence
+
+**Goal:** ยกระดับ agent pipeline ให้ตรงกับ blueprint — discovery dialog, request classifier, customer memory, enriched handoff artifact, feedback loop
+
+**Target features:**
+- Discovery Agent — ถาม 3-5 คำถามก่อน generate solution
+- Request Classifier — จำแนก use case (HCI / DR / Backup / Security / Full-stack) ก่อน route
+- Customer Memory — จำ context ลูกค้าข้าม session
+- Enriched Handoff Artifact — proposal มี risks, missing info, next human action
+- Feedback Loop — capture ว่า engineer แก้ output อะไรบ้าง
+
+---
+
 ## What This Is
 
 AI-powered presale assistant for IT solution companies. Users chat with the system in Thai/English, describe a customer's requirements, and receive structured solution recommendations, BOM with pricing, and a downloadable proposal DOCX — like having a real presale engineer on demand.
@@ -24,15 +37,16 @@ A presale engineer should be able to drop a customer brief into the chat and get
 - ✓ Pricing catalog: 25 SKUs across Nutanix, Veeam, Dell, Cisco, Fortinet, HPE — Phase 6
 - ✓ Proposal DOCX generation with DOCX builder — Phase 7
 
+### Validated (Phase 6)
+
+- ✓ Error handling in chat — agent failure, timeout (60s), KB miss all return `{ ok: false, error }` with retry button — Phase 6
+- ✓ PM2 deployment config (`ecosystem.config.cjs`) for office server — Phase 6
+- ✓ Thai onboarding guide (`ONBOARDING.md`) — Phase 6
+- ✓ Performance check script (`scripts/perf-check.js`) with 60s/10s thresholds — Phase 6
+
 ### Active
 
-- [ ] Chat UI — multi-turn conversation interface (like Claude/ChatGPT) in browser
-- [ ] User authentication — login so team members have their own sessions
-- [ ] Cross-session conversation history — return to past projects and continue
-- [ ] Full pipeline from chat — brief → discovery → solution + BOM → proposal in one flow
-- [ ] BOM displayed inline in chat — readable table, not just a download
-- [ ] Proposal DOCX downloadable from chat
-- [ ] Solution quality — output must feel like a real presale engineer, not generic AI
+- [ ] Chat UI human UAT — retry button click, live multi-turn flow, ONBOARDING readability, PM2 crash recovery
 - [ ] n8n orchestration — visual workflow, Line/email notifications
 - [ ] SaaS subscription packaging — multi-tenant, billing, org management
 
@@ -46,13 +60,14 @@ A presale engineer should be able to drop a customer brief into the chat and get
 
 ## Context
 
-**Current codebase state (v1.0 internal):**
+**Current codebase state (v1.0 internal — Phase 6 complete):**
 - Node.js HTTP server (`server.js`) — no framework, raw `node:http`
 - 4 agents: discovery, solution, bom, proposal — each with mock fallback
 - Supabase (Postgres + pgvector) for all persistence
 - Admin portal at `/admin` for KB management
-- Current UI: basic HTML intake form + chat-style submit in `intake/index.html`
-- 19/19 tests passing (node:test)
+- Chat UI at `/chat` with multi-turn conversation, error handling, retry button
+- PM2 deployment config (`ecosystem.config.cjs`) for office server
+- 46/46 tests passing (node:test)
 
 **Team context:**
 - One-person presale company (Pitsanu)
@@ -60,11 +75,10 @@ A presale engineer should be able to drop a customer brief into the chat and get
 - Domain coverage: HCI, 3-Tier, Backup & Recovery, DR, Cybersecurity
 - Thai enterprise market, proposals in Thai context
 
-**Key gaps before internal use:**
-- No real chat UI with conversation threading
-- No user login / session management
-- Pipeline stages not fully chained in server.js (solution/BOM/proposal not wired end-to-end)
-- Proposal delivery not gated (human_approved gate exists but disabled for now)
+**Ready for internal use — pending human UAT:**
+- Live multi-turn chat flow (requires Supabase + OpenAI credentials)
+- PM2 deployment on office machine
+- Team onboarding via ONBOARDING.md (Thai)
 
 ## Constraints
 
@@ -102,4 +116,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 — Phase 04 complete: chat UI frontend (login, chat shell, chat.js, human verification all passed)*
+*Last updated: 2026-04-04 — Milestone v1.1 started: Blueprint-Driven Agent Intelligence*

@@ -200,6 +200,23 @@ export async function runSolutionAgent(requirements, options = {}) {
   const { chunks: knowledge, retrieval_mode } = await getKnowledge(requirements);
   const projectObjective = formatProjectObjective();
 
+  let memoryContext = "";
+  if (requirements.prior_rejected_options?.length > 0) {
+    const rejectedList = requirements.prior_rejected_options
+      .map(o => `${o.name} (${o.vendor_stack?.join(", ") ?? "unknown"})`)
+      .join("; ");
+    memoryContext += `\n\n[PREVIOUSLY REJECTED OPTIONS]\nThe customer previously rejected these options — avoid recommending them unless explicitly requested:\n${rejectedList}`;
+  }
+  if (requirements.vendor_preferences) {
+    const vp = requirements.vendor_preferences;
+    if (vp.preferred?.length > 0) {
+      memoryContext += `\n\n[VENDOR PREFERENCES]\nPreferred vendors (rank higher): ${vp.preferred.join(", ")}`;
+    }
+    if (vp.disliked?.length > 0) {
+      memoryContext += `\nDisliked vendors (rank lower or exclude): ${vp.disliked.join(", ")}`;
+    }
+  }
+
   const output = await withAgentLogging(
     {
       agentName: "solution_design",
@@ -215,7 +232,7 @@ export async function runSolutionAgent(requirements, options = {}) {
       generateJsonWithOpenAI({
         systemPrompt: `${prompt}\n\n[PROJECT OBJECTIVE]\n${projectObjective}\n\n[KNOWLEDGE BASE]\n${knowledge
           .map((entry) => `${entry.title}\n${entry.content}`)
-          .join("\n\n")}`,
+          .join("\n\n")}${memoryContext}`,
         userPrompt: JSON.stringify(requirements, null, 2),
         model: config.openai.models.solution,
         textFormat: solutionTextFormat,
