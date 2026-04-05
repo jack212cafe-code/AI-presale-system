@@ -179,8 +179,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — user_preferences schema + lib/user-preferences.js + new exports in lib/projects.js + unit tests
-- [ ] 08-02-PLAN.md — Wire memory into handleDiscoveryQuestions + solution agent + vendor preference API + integration tests
+- [x] 08-01-PLAN.md — user_preferences schema + lib/user-preferences.js + new exports in lib/projects.js + unit tests
+- [x] 08-02-PLAN.md — Wire memory into handleDiscoveryQuestions + solution agent + vendor preference API + integration tests
 - [ ] 08-03-PLAN.md — Human verification of all four customer memory features in live chat
 
 ### Phase 9: Enriched Handoff Artifact
@@ -215,6 +215,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 7. Discovery Agent + Classifier | 0/3 | Planning Complete | - |
 | 7.1. Solution & BOM Accuracy | 0/0 | Not started | - |
-| 8. Customer Memory | 0/3 | Planned    |  |
+| 8. Customer Memory | 2/3 | In Progress|  |
 | 9. Enriched Handoff Artifact | 0/0 | Not started | - |
 | 10. Feedback Loop + UX Fixes | 0/0 | Not started | - |

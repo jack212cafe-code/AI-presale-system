@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: — Blueprint-Driven Agent Intelligence
-status: in_progress
-last_updated: "2026-04-05T07:00:55Z"
+milestone: v1.0
+milestone_name: — Office Internal Release
+status: completed
+last_updated: "2026-04-05T07:08:47.399Z"
 progress:
   total_phases: 6
   completed_phases: 6
@@ -68,6 +68,8 @@ Next action: Continue to Plan 08-02 (wire memory functions into chat)
 - [Phase 06-03]: ecosystem.config.cjs uses .cjs extension because package.json has type:module
 - [Phase 06-03]: perf-check.js aborts without OPENAI_API_KEY — no silent mock-mode runs
 - [Phase 06-03]: ONBOARDING.md all-Thai with code commands as-is per D-12
+- [Phase 08-customer-memory]: userId threaded explicitly into handleDiscoveryQuestions — avoids null issues from conversation object
+- [Phase 08-customer-memory]: memoryContext defaults to empty string — zero overhead when no memory context exists
 
 ## Blockers
 
