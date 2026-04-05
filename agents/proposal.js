@@ -56,6 +56,9 @@ function buildMockDraft(project, solution) {
 export async function runProposalAgent(project, requirements, solution, bom, options = {}) {
   const prompt = await loadPrompt();
 
+  const selectedIdx = solution.selected_option ?? 0;
+  const selectedOption = solution.options?.[selectedIdx] ?? solution.options?.[0];
+
   const draft = await withAgentLogging(
     {
       agentName: "proposal",
@@ -64,7 +67,7 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
       input: {
         project,
         requirements,
-        solution,
+        selected_solution: selectedOption,
         bom
       }
     },
@@ -75,7 +78,7 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
           {
             project,
             requirements,
-            solution,
+            selected_solution: selectedOption,
             bom
           },
           null,
@@ -99,10 +102,12 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
   const outputDir = options.outputDir || path.join(projectRoot, "output");
   await mkdir(outputDir, { recursive: true });
 
-  const proposalPath = path.join(
-    outputDir,
-    `${project.customer_name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "customer"}-proposal.docx`
-  );
+  const nameSlug = (() => {
+    const ascii = (project.customer_name || "").match(/[a-zA-Z0-9]+/g);
+    if (ascii && ascii.length > 0) return ascii.join("-").toLowerCase();
+    return `customer-${Date.now()}`;
+  })();
+  const proposalPath = path.join(outputDir, `${nameSlug}-proposal.docx`);
 
   const sanitized = {
     executive_summary: String(draft.executive_summary ?? "").trim(),

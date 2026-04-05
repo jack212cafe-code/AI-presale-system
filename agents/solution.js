@@ -200,6 +200,15 @@ export async function runSolutionAgent(requirements, options = {}) {
   const { chunks: knowledge, retrieval_mode } = await getKnowledge(requirements);
   const projectObjective = formatProjectObjective();
 
+  let specialistContext = "";
+  if (Array.isArray(options.specialistBriefs) && options.specialistBriefs.length > 0) {
+    const sections = options.specialistBriefs.map(brief => {
+      const label = { syseng: "System Engineer", neteng: "Network Engineer", devops: "DevOps/Management", ai_eng: "AI Engineer" }[brief.domain] ?? brief.domain;
+      return `### ${label} Brief\n${JSON.stringify(brief, null, 2)}`;
+    });
+    specialistContext = `\n\n[SPECIALIST BRIEFS]\nThe following domain experts have analyzed this requirement. Use their constraints and sizing as ground truth.\n\n${sections.join("\n\n")}`;
+  }
+
   let memoryContext = "";
   if (requirements.prior_rejected_options?.length > 0) {
     const rejectedList = requirements.prior_rejected_options
@@ -232,7 +241,7 @@ export async function runSolutionAgent(requirements, options = {}) {
       generateJsonWithOpenAI({
         systemPrompt: `${prompt}\n\n[PROJECT OBJECTIVE]\n${projectObjective}\n\n[KNOWLEDGE BASE]\n${knowledge
           .map((entry) => `${entry.title}\n${entry.content}`)
-          .join("\n\n")}${memoryContext}`,
+          .join("\n\n")}${specialistContext}${memoryContext}`,
         userPrompt: JSON.stringify(requirements, null, 2),
         model: config.openai.models.solution,
         textFormat: solutionTextFormat,

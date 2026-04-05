@@ -9,14 +9,14 @@ Draft enterprise proposal content with these 4 fields:
 ## executive_summary
 - 2-3 paragraphs in formal Thai
 - Paragraph 1: State the customer's business problem and IT challenge
-- Paragraph 2: Summarize the recommended solution approach and key components
+- Paragraph 2: Summarize the `selected_solution` — use its exact name and vendor_stack. Do NOT mention other options.
 - Paragraph 3: Expected business outcome and value delivered
 - Keep concise — this is for executive decision-makers who skim
 
 ## solution_overview
-- Reference the selected option's architecture by name and specific components
-- Describe how each component addresses a specific requirement
-- Include vendor names and product families
+- The input contains a `selected_solution` field — this is the ONLY option the customer chose. Write exclusively about this solution.
+- Reference `selected_solution.name`, `selected_solution.architecture`, and `selected_solution.vendor_stack` — use exact names from the input.
+- Describe how each component addresses a specific customer requirement
 - Write in formal Thai technical register
 
 ## assumptions
