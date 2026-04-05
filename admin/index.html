@@ -1,425 +1,285 @@
 <!DOCTYPE html>
 <html lang="th">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Knowledge Admin Portal</title>
-    <style>
-      :root {
-        color-scheme: light;
-        --bg: #f2efe7;
-        --panel: rgba(255, 251, 245, 0.92);
-        --ink: #172126;
-        --muted: #5b6a72;
-        --line: #d7ccbc;
-        --accent: #0d6b62;
-        --accent-strong: #084d47;
-        --danger: #b33a2e;
-        --shadow: 0 20px 60px rgba(23, 33, 38, 0.12);
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knowledge Admin — AI Presale</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c0e14;
+      --surface: #13161f;
+      --surface-2: #1a1e2a;
+      --border: rgba(255,255,255,0.06);
+      --border-strong: rgba(255,255,255,0.11);
+      --ink: #dce1ec;
+      --ink-dim: #8691a8;
+      --ink-faint: #3d4560;
+      --accent: #22d3ee;
+      --accent-dim: rgba(34,211,238,0.1);
+      --accent-glow: rgba(34,211,238,0.2);
+      --green: #10b981;
+      --green-dim: rgba(16,185,129,0.1);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.1);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      background-image: radial-gradient(ellipse 70% 50% at 20% 0%, rgba(34,211,238,0.05), transparent);
+    }
+    main { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
 
-      * {
-        box-sizing: border-box;
-      }
+    /* Header */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .wordmark { display: flex; align-items: center; gap: 10px; }
+    .logo-mark { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), rgba(34,211,238,0.4)); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+    .logo-mark svg { width: 16px; height: 16px; fill: #0c0e14; }
+    .logo-text { font-family: "Syne", sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-text span { color: var(--accent); }
+    .badge {
+      padding: 4px 12px;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 999px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: #f59e0b;
+    }
 
-      body {
-        margin: 0;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        color: var(--ink);
-        background:
-          radial-gradient(circle at top left, rgba(13, 107, 98, 0.16), transparent 28%),
-          radial-gradient(circle at right center, rgba(179, 58, 46, 0.1), transparent 24%),
-          linear-gradient(180deg, #f6f2e9 0%, var(--bg) 100%);
-      }
+    /* Hero */
+    .hero { margin-bottom: 28px; }
+    .eyebrow {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+    }
+    h1 { font-family: "Syne", sans-serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.05em; line-height: 1.05; margin-bottom: 8px; }
+    .hero p { font-size: 14px; color: var(--ink-dim); line-height: 1.7; max-width: 600px; }
 
-      main {
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 40px 18px 56px;
-      }
+    /* Layout */
+    .layout { display: grid; gap: 20px; grid-template-columns: minmax(320px, 400px) 1fr; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-      .hero {
-        margin-bottom: 24px;
-      }
+    /* Panel */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .panel-header { padding: 20px 22px 0; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    .panel-header h2 { font-family: "Syne", sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+    .panel-header p { font-size: 13px; color: var(--ink-dim); line-height: 1.6; }
 
-      .eyebrow {
-        margin: 0 0 8px;
-        color: var(--accent);
-        font-size: 0.85rem;
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
+    /* Login panel */
+    #login-panel { max-width: 440px; margin-bottom: 24px; }
 
-      h1 {
-        margin: 0 0 10px;
-        font-size: clamp(2rem, 5vw, 4rem);
-        line-height: 0.95;
-      }
+    /* Form */
+    form { display: grid; gap: 14px; padding: 18px 22px 22px; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    label { display: grid; gap: 5px; font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-dim); }
+    input, select, textarea {
+      width: 100%; background: var(--surface-2); border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm); color: var(--ink); font-family: inherit; font-size: 13px;
+      padding: 10px 12px; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: rgba(34,211,238,0.35); box-shadow: 0 0 0 3px var(--accent-dim); }
+    input::placeholder, textarea::placeholder { color: var(--ink-faint); }
+    textarea { min-height: 80px; resize: vertical; }
+    select option { background: var(--surface-2); }
 
-      .hero p {
-        max-width: 760px;
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.6;
-      }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 16px; border: none; border-radius: var(--radius-xs);
+      font-family: "Syne", sans-serif; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.15s, background 0.15s;
+    }
+    button:disabled { opacity: 0.4; cursor: wait; }
+    .btn-primary { background: var(--accent); color: #0c0e14; box-shadow: 0 0 14px var(--accent-glow); }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary { background: var(--surface-2); color: var(--ink-dim); border: 1px solid var(--border-strong); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.06); color: var(--ink); }
+    .btn-danger { background: var(--red-dim); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
+    .btn-danger:hover { background: rgba(239,68,68,0.18); }
 
-      .layout {
-        display: grid;
-        gap: 22px;
-        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-      }
+    /* Status */
+    .status {
+      margin: 0 22px 18px; padding: 11px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px; line-height: 1.5;
+      background: var(--green-dim); border: 1px solid rgba(16,185,129,0.2); color: #6ee7b7;
+      white-space: pre-wrap;
+    }
+    .status.error { background: var(--red-dim); border-color: rgba(239,68,68,0.2); color: #fca5a5; }
+    .status.neutral { background: var(--surface-2); border-color: var(--border-strong); color: var(--ink-dim); }
 
-      .hidden {
-        display: none !important;
-      }
+    /* Progress */
+    .progress { display: grid; gap: 8px; margin: 0 22px 18px; }
+    .progress-track { width: 100%; height: 6px; overflow: hidden; border-radius: 999px; background: var(--surface-2); }
+    .progress-fill { height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), rgba(34,211,238,0.5)); transition: width 180ms ease; }
+    .progress-meta { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-dim); }
 
-      .panel {
-        border: 1px solid var(--line);
-        border-radius: 24px;
-        background: var(--panel);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(14px);
-      }
+    /* Session bar */
+    .session-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--border); }
+    .session-note { font-size: 13px; color: var(--ink-dim); }
 
-      .panel-header {
-        padding: 22px 24px 0;
-      }
+    /* Toolbar */
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 22px 0; }
+    .toolbar h2 { font-family: "Syne", sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 3px; }
+    .toolbar p { font-size: 13px; color: var(--ink-dim); }
 
-      .panel-header h2 {
-        margin: 0 0 8px;
-        font-size: 1.3rem;
-      }
+    /* Doc list */
+    .doc-list { display: grid; gap: 12px; padding: 16px 22px 22px; }
+    .empty {
+      padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+      color: var(--ink-faint); font-size: 13px; text-align: center;
+    }
+    .doc-card {
+      padding: 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+      background: var(--surface-2); display: grid; gap: 10px;
+      transition: border-color 0.15s;
+    }
+    .doc-card:hover { border-color: rgba(255,255,255,0.18); }
+    .doc-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .doc-head h3 { font-family: "Syne", sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 3px; letter-spacing: -0.02em; }
+    .doc-meta, .doc-path { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-dim); line-height: 1.5; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 3px 9px; border-radius: 999px;
+      background: var(--accent-dim); border: 1px solid rgba(34,211,238,0.15);
+      color: var(--accent); font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.04em;
+    }
 
-      .panel-header p {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.5;
-      }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="page-header">
+      <div class="wordmark">
+        <div class="logo-mark"><svg viewBox="0 0 20 20"><path d="M10 2L2 7v6l8 5 8-5V7L10 2zM10 4.18L16 8v4l-6 3.75L4 12V8l6-3.82z"/></svg></div>
+        <div class="logo-text">AI <span>Presale</span></div>
+      </div>
+      <div class="badge">ADMIN PORTAL</div>
+    </div>
 
-      form {
-        display: grid;
-        gap: 14px;
-        padding: 20px 24px 24px;
-      }
+    <div class="hero">
+      <div class="eyebrow">Knowledge Admin</div>
+      <h1>Import เอกสารเข้า Knowledge Base</h1>
+      <p>อัปโหลด datasheet, best practice, user guide และ product catalog เพื่อเพิ่มความแม่นยำให้ระบบ</p>
+    </div>
 
-      .grid {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      }
+    <section id="login-panel" class="panel">
+      <div class="panel-header">
+        <h2>Admin Login</h2>
+        <p>ใส่รหัสผ่านของ admin portal</p>
+      </div>
+      <form id="login-form">
+        <label>Password
+          <input id="password-input" name="password" type="password" required placeholder="••••••••" />
+        </label>
+        <div class="actions">
+          <button type="submit" class="btn-primary">Login</button>
+        </div>
+      </form>
+      <div id="login-status" class="status neutral">กรุณาเข้าสู่ระบบ</div>
+    </section>
 
-      label {
-        display: grid;
-        gap: 6px;
-        font-size: 0.92rem;
-      }
-
-      input,
-      select,
-      textarea {
-        width: 100%;
-        padding: 11px 12px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: #fff;
-        font: inherit;
-      }
-
-      textarea {
-        min-height: 92px;
-        resize: vertical;
-      }
-
-      .actions {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-
-      button {
-        border: 0;
-        border-radius: 999px;
-        padding: 11px 18px;
-        background: var(--accent);
-        color: white;
-        font: inherit;
-        cursor: pointer;
-      }
-
-      button.secondary {
-        background: #dde8e5;
-        color: var(--accent-strong);
-      }
-
-      button.danger {
-        background: #f6dfdc;
-        color: var(--danger);
-      }
-
-      button:disabled {
-        opacity: 0.6;
-        cursor: wait;
-      }
-
-      .status {
-        margin: 0 24px 24px;
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: #edf7f5;
-        color: var(--accent-strong);
-        white-space: pre-wrap;
-      }
-
-      .status.error {
-        background: #faece9;
-        color: var(--danger);
-      }
-
-      .session-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        padding: 0 0 18px;
-      }
-
-      .session-note {
-        color: var(--muted);
-        font-size: 0.92rem;
-      }
-
-      .progress {
-        display: grid;
-        gap: 8px;
-        margin: 0 24px 20px;
-      }
-
-      .progress-track {
-        width: 100%;
-        height: 12px;
-        overflow: hidden;
-        border-radius: 999px;
-        background: #dfebe8;
-      }
-
-      .progress-fill {
-        height: 100%;
-        width: 0%;
-        border-radius: inherit;
-        background: linear-gradient(90deg, var(--accent), #4aa397);
-        transition: width 180ms ease;
-      }
-
-      .progress-meta {
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
-
-      .toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        padding: 20px 24px 0;
-      }
-
-      .toolbar button {
-        padding-inline: 16px;
-      }
-
-      .doc-list {
-        display: grid;
-        gap: 14px;
-        padding: 18px 24px 24px;
-      }
-
-      .empty {
-        padding: 18px;
-        border: 1px dashed var(--line);
-        border-radius: 18px;
-        color: var(--muted);
-        background: rgba(255, 255, 255, 0.72);
-      }
-
-      .doc-card {
-        display: grid;
-        gap: 12px;
-        padding: 18px;
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.86);
-      }
-
-      .doc-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        align-items: start;
-      }
-
-      .doc-head h3 {
-        margin: 0 0 6px;
-        font-size: 1.05rem;
-      }
-
-      .doc-meta,
-      .doc-path {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.9rem;
-        line-height: 1.5;
-      }
-
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .chip {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #ecf4f2;
-        color: var(--accent-strong);
-        font-size: 0.82rem;
-      }
-
-      @media (max-width: 900px) {
-        .layout {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <section class="hero">
-        <p class="eyebrow">Knowledge Admin</p>
-        <h1>Import เอกสารเข้า AI Presale System</h1>
-        <p>อัปโหลด datasheet, best practice, user guide และ product catalog เพื่อให้ระบบใช้เป็น knowledge base ได้ พร้อมดูรายการเอกสารที่มีอยู่และลบออกจากระบบเมื่อไม่ต้องการแล้ว</p>
-      </section>
-
-      <section id="login-panel" class="panel" style="max-width: 460px; margin-bottom: 24px">
+    <section id="portal-layout" class="layout hidden">
+      <!-- Upload Panel -->
+      <article class="panel">
         <div class="panel-header">
-          <h2>Admin Login</h2>
-          <p>ใส่รหัสผ่านของ admin portal ก่อนใช้งานหน้า import เอกสาร</p>
+          <h2>Upload Document</h2>
+          <p>เลือกไฟล์ ใส่ข้อมูล แล้วกด Import — ระบบจะบันทึกและนำเข้า knowledge base ให้อัตโนมัติ</p>
         </div>
 
-        <form id="login-form">
-          <label>
-            Password
-            <input id="password-input" name="password" type="password" required />
+        <div class="session-bar">
+          <span class="session-note">ล็อกอินแล้ว · พร้อม upload</span>
+          <button type="button" class="btn-secondary" id="logout-button">Logout</button>
+        </div>
+
+        <form id="upload-form">
+          <label>File
+            <input id="file-input" name="file" type="file" required />
+          </label>
+          <div class="grid">
+            <label>Title
+              <input name="title" placeholder="ชื่อเอกสาร" />
+            </label>
+            <label>Vendor
+              <input name="vendor" placeholder="Nutanix, Veeam, Dell..." />
+            </label>
+            <label>Product Family
+              <input name="product_family" placeholder="HCI, Backup, DR..." />
+            </label>
+            <label>Document Type
+              <select name="document_type">
+                <option value="">Auto detect</option>
+                <option value="datasheet">Datasheet</option>
+                <option value="best_practice">Best Practice</option>
+                <option value="user_guide">User Guide</option>
+                <option value="product_catalog">Product Catalog</option>
+                <option value="catalog_table">Catalog Table</option>
+                <option value="reference_document">Reference Document</option>
+              </select>
+            </label>
+            <label>Category
+              <select name="category">
+                <option value="">Auto detect</option>
+                <option value="platform_architecture">Platform Architecture</option>
+                <option value="backup_strategy">Backup Strategy</option>
+                <option value="dr_strategy">DR Strategy</option>
+                <option value="commercial_rule">Commercial Rule</option>
+                <option value="general_reference">General Reference</option>
+              </select>
+            </label>
+            <label>Revision Date
+              <input name="revision_date" type="date" />
+            </label>
+          </div>
+          <label>Tags
+            <input name="tags" placeholder="เช่น hci, datasource, veeam" />
+          </label>
+          <label>Trust Level
+            <input name="trust_level" placeholder="vendor_official / internal_summary" />
           </label>
           <div class="actions">
-            <button type="submit">Login</button>
+            <button type="submit" class="btn-primary" id="upload-button">Import document</button>
+            <button type="button" class="btn-secondary" id="refresh-button">Refresh list</button>
           </div>
         </form>
 
-        <div id="login-status" class="status">กรุณาเข้าสู่ระบบ</div>
-      </section>
+        <div id="status" class="status neutral">พร้อมใช้งาน</div>
+        <div id="progress-box" class="progress hidden">
+          <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+          <div id="progress-meta" class="progress-meta">ยังไม่มีงาน import ที่กำลังทำงาน</div>
+        </div>
+      </article>
 
-      <section id="portal-layout" class="layout hidden">
-        <article class="panel">
-          <div class="panel-header">
-            <h2>Upload Document</h2>
-            <p>เลือกไฟล์จากเครื่องคุณ ใส่ข้อมูลประกอบเท่าที่มี แล้วกด import ระบบจะบันทึกไฟล์ แปลงเป็นข้อความ และนำเข้า knowledge base ให้อัตโนมัติ</p>
+      <!-- Documents Panel -->
+      <article class="panel">
+        <div class="toolbar">
+          <div>
+            <h2>Current Documents</h2>
+            <p>เอกสารที่ถูก import เข้า knowledge base แล้ว</p>
           </div>
+          <button type="button" class="btn-secondary" id="reload-docs-button">Reload</button>
+        </div>
+        <div id="doc-list" class="doc-list">
+          <div class="empty">กำลังโหลดรายการเอกสาร...</div>
+        </div>
+      </article>
+    </section>
+  </main>
 
-          <div class="session-bar" style="padding: 18px 24px 0">
-            <div class="session-note">ล็อกอินแล้ว สามารถ upload, ดูรายการ และลบเอกสารได้</div>
-            <button type="button" class="secondary" id="logout-button">Logout</button>
-          </div>
-
-          <form id="upload-form">
-            <label>
-              File
-              <input id="file-input" name="file" type="file" required />
-            </label>
-
-            <div class="grid">
-              <label>
-                Title
-                <input name="title" placeholder="ชื่อเอกสาร" />
-              </label>
-              <label>
-                Vendor
-                <input name="vendor" placeholder="Nutanix, Veeam, Dell..." />
-              </label>
-              <label>
-                Product Family
-                <input name="product_family" placeholder="HCI, Backup, DR..." />
-              </label>
-              <label>
-                Document Type
-                <select name="document_type">
-                  <option value="">Auto detect</option>
-                  <option value="datasheet">Datasheet</option>
-                  <option value="best_practice">Best Practice</option>
-                  <option value="user_guide">User Guide</option>
-                  <option value="product_catalog">Product Catalog</option>
-                  <option value="catalog_table">Catalog Table</option>
-                  <option value="reference_document">Reference Document</option>
-                </select>
-              </label>
-              <label>
-                Category
-                <select name="category">
-                  <option value="">Auto detect</option>
-                  <option value="platform_architecture">Platform Architecture</option>
-                  <option value="backup_strategy">Backup Strategy</option>
-                  <option value="dr_strategy">DR Strategy</option>
-                  <option value="commercial_rule">Commercial Rule</option>
-                  <option value="general_reference">General Reference</option>
-                </select>
-              </label>
-              <label>
-                Revision Date
-                <input name="revision_date" type="date" />
-              </label>
-            </div>
-
-            <label>
-              Tags
-              <input name="tags" placeholder="เช่น hci, datasource, veeam" />
-            </label>
-
-            <label>
-              Trust Level
-              <input name="trust_level" placeholder="เช่น vendor_official, internal_summary" />
-            </label>
-
-            <div class="actions">
-              <button type="submit" id="upload-button">Import document</button>
-              <button type="button" class="secondary" id="refresh-button">Refresh list</button>
-            </div>
-          </form>
-
-          <div id="status" class="status">พร้อมใช้งาน</div>
-          <div id="progress-box" class="progress hidden">
-            <div class="progress-track">
-              <div id="progress-fill" class="progress-fill"></div>
-            </div>
-            <div id="progress-meta" class="progress-meta">ยังไม่มีงาน import ที่กำลังทำงาน</div>
-          </div>
-        </article>
-
-        <article class="panel">
-          <div class="toolbar">
-            <div>
-              <h2 style="margin: 0 0 6px">Current Documents</h2>
-              <p style="margin: 0; color: var(--muted)">รายการนี้แสดงเอกสารที่ถูก import เข้า knowledge base แล้ว</p>
-            </div>
-            <button type="button" class="secondary" id="reload-docs-button">Reload</button>
-          </div>
-
-          <div id="doc-list" class="doc-list">
-            <div class="empty">กำลังโหลดรายการเอกสาร...</div>
-          </div>
-        </article>
-      </section>
-    </main>
-
-    <script type="module" src="/admin/admin.js"></script>
-  </body>
+  <script type="module" src="/admin/admin.js"></script>
+</body>
 </html>

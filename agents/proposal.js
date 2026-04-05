@@ -121,8 +121,11 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
     projectName: `${project.customer_name} Presale Proposal`,
     executiveSummary: sanitized.executive_summary,
     solutionOverview: sanitized.solution_overview,
+    solutionArchitecture: selectedOption?.architecture ?? null,
+    solutionVendors: selectedOption?.vendor_stack ?? [],
     bomRows: bom.rows,
-    assumptions: sanitized.assumptions
+    assumptions: sanitized.assumptions,
+    nextSteps: sanitized.next_steps
   });
 
   await writeFile(proposalPath, buffer);

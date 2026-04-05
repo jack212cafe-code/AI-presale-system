@@ -28,12 +28,12 @@ function escapeHtml(value) {
 
 function setStatus(message, type = "info") {
   statusBox.textContent = message;
-  statusBox.className = type === "error" ? "status error" : "status";
+  statusBox.className = type === "error" ? "status error" : type === "success" ? "status" : "status neutral";
 }
 
 function setLoginStatus(message, type = "info") {
   loginStatus.textContent = message;
-  loginStatus.className = type === "error" ? "status error" : "status";
+  loginStatus.className = type === "error" ? "status error" : type === "success" ? "status" : "status neutral";
 }
 
 function setPortalVisibility(authenticated) {

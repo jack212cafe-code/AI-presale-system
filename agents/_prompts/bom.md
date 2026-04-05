@@ -62,8 +62,9 @@ For each component category, calculate first:
 
 - Do NOT include unit prices or totals
 - qty must be an integer ≥ 1
-- `description` must be specific enough for a distributor to identify the product. Include: model family, CPU model+core count, RAM GB, storage type+capacity, NIC speed, license edition, VM/user count as applicable.
-- `notes` field on each row: explain WHY this spec (sizing rationale, or what it connects to)
+- `description` must be specific enough for a distributor to identify the product. Include: model family, CPU model+core count, RAM GB, storage type+capacity, NIC speed, license edition, VM/user count as applicable. Product names and technical terms (model numbers, CPU names, NIC speeds, etc.) should remain in English.
+- `notes` field on each row: **เขียนเป็นภาษาไทยเป็นหลัก** อธิบายเหตุผลที่เลือก spec นี้และการคำนวณ sizing ใช้ภาษาอังกฤษเฉพาะชื่อ product, model number, หรือศัพท์เทคนิคที่เข้าใจง่ายกว่า เช่น RF2, NVMe, NIC, HCI, socket, per-VM ไม่ต้องแปลเป็นไทย
+- `notes` array ระดับ BOM (ไม่ใช่ row): เขียนเป็นภาษาไทย เช่น "ราคาขอได้จาก authorized distributor" แทน "Pricing to be requested from authorized distributor"
 - Do NOT write generic descriptions like "enterprise server" or "backup solution"
 
 ## Output format

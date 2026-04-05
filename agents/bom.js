@@ -62,21 +62,21 @@ function buildMockBom(solution) {
         category: "HCI Appliance",
         description: "Nutanix NX-series node, dual Intel Xeon processor, 512GB RAM, NVMe SSD storage, 10GbE NIC",
         qty: 3,
-        notes: "3-node HCI cluster — confirm CPU/RAM/storage sizing with Nutanix sizing tool"
+        notes: "cluster 3 node สำหรับ HCI แบบ N+1 tolerance — ยืนยัน CPU/RAM/storage sizing ด้วย Nutanix sizing tool ก่อน finalize"
       });
     } else if (vendor === "Dell") {
       rows.push({
         category: "Server",
         description: "Dell PowerEdge R750, 2x Intel Xeon Gold 6330 (28-core), 512GB DDR4 ECC RAM, 8x 3.84TB SSD NVMe, dual 25GbE NIC, dual 800W PSU",
         qty: 3,
-        notes: "Compute nodes for HCI or 3-tier cluster"
+        notes: "compute node สำหรับ HCI หรือ 3-tier cluster — จำนวน 3 node เป็น minimum สำหรับ quorum"
       });
     } else if (vendor === "HPE") {
       rows.push({
         category: "Server",
         description: "HPE ProLiant DL380 Gen10 Plus, 2x Intel Xeon Gold 6330, 512GB DDR4, 8x 3.84TB SSD, dual 25GbE NIC",
         qty: 3,
-        notes: "Compute nodes"
+        notes: "compute node — ยืนยัน RAM และ storage sizing ก่อน order"
       });
     }
   }
@@ -87,7 +87,7 @@ function buildMockBom(solution) {
         category: "Backup Software",
         description: "Veeam Data Platform Foundation, Enterprise Plus edition, per-VM socket license",
         qty: 1,
-        notes: "Covers up to 50 VMs — include Veeam ONE for monitoring"
+        notes: "ครอบคลุมสูงสุด 50 VMs — ควรรวม Veeam ONE สำหรับ monitoring ด้วย"
       });
     }
   }
@@ -98,14 +98,14 @@ function buildMockBom(solution) {
         category: "Hypervisor",
         description: "Proxmox VE Subscription, Basic or Standard tier, per node",
         qty: 3,
-        notes: "Community edition is free; subscription required for enterprise support"
+        notes: "Community edition ใช้ฟรีได้ แต่ถ้าต้องการ enterprise support ต้องซื้อ subscription"
       });
     } else if (vendor === "VMware") {
       rows.push({
         category: "Hypervisor",
         description: "VMware vSphere Enterprise Plus license, per socket",
         qty: 6,
-        notes: "2 sockets per server x 3 nodes"
+        notes: "2 socket ต่อ server × 3 nodes = 6 license — ระวัง Broadcom subscription model ทำให้ราคาเพิ่มขึ้นมากหลังปี 2024"
       });
     }
   }
@@ -122,9 +122,9 @@ function buildMockBom(solution) {
   return {
     rows,
     notes: [
-      "Pricing to be requested from authorized distributor",
-      "Final specifications subject to customer workshop validation",
-      "Quantities are estimates — confirm with sizing tools before quoting"
+      "ราคาขอได้จาก authorized distributor โดยตรง",
+      "ข้อมูล spec ทั้งหมดต้องยืนยันอีกครั้งในการ workshop กับลูกค้า",
+      "จำนวนที่ระบุเป็นการประมาณการ — ยืนยันด้วย sizing tool ก่อน quote"
     ]
   };
 }
