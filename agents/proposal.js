@@ -27,7 +27,27 @@ const proposalTextFormat = {
     properties: {
       executive_summary: { type: "string" },
       solution_overview: { type: "string" },
+      options_considered: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: { type: "string" },
+            rationale: { type: "string" }
+          },
+          required: ["name", "rationale"]
+        }
+      },
       assumptions: {
+        type: "array",
+        items: { type: "string" }
+      },
+      risks: {
+        type: "array",
+        items: { type: "string" }
+      },
+      missing_info: {
         type: "array",
         items: { type: "string" }
       },
@@ -36,7 +56,7 @@ const proposalTextFormat = {
         items: { type: "string" }
       }
     },
-    required: ["executive_summary", "solution_overview", "assumptions", "next_steps"]
+    required: ["executive_summary", "solution_overview", "options_considered", "assumptions", "risks", "missing_info", "next_steps"]
   }
 };
 
@@ -67,18 +87,20 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
       input: {
         project,
         requirements,
-        selected_solution: selectedOption,
+        solution,
         bom
       }
     },
     () =>
       generateJsonWithOpenAI({
-        systemPrompt: prompt,
+        systemPrompt: options.budgetWarning
+          ? `${prompt}\n\n[BUDGET WARNING]\n${options.budgetWarning}\nMention this in executive_summary and assumptions.`
+          : prompt,
         userPrompt: JSON.stringify(
           {
             project,
             requirements,
-            selected_solution: selectedOption,
+            solution,
             bom
           },
           null,
@@ -112,7 +134,10 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
   const sanitized = {
     executive_summary: String(draft.executive_summary ?? "").trim(),
     solution_overview: String(draft.solution_overview ?? "").trim(),
+    options_considered: Array.isArray(draft.options_considered) ? draft.options_considered : [],
     assumptions: Array.isArray(draft.assumptions) ? draft.assumptions : [],
+    risks: Array.isArray(draft.risks) ? draft.risks : [],
+    missing_info: Array.isArray(draft.missing_info) ? draft.missing_info : [],
     next_steps: Array.isArray(draft.next_steps) ? draft.next_steps : []
   };
 
@@ -123,8 +148,11 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
     solutionOverview: sanitized.solution_overview,
     solutionArchitecture: selectedOption?.architecture ?? null,
     solutionVendors: selectedOption?.vendor_stack ?? [],
-    bomRows: bom.rows,
+    bomRows: (bom.rows ?? []).filter(r => r.category !== "GROUNDING WARNING"),
+    optionsConsidered: sanitized.options_considered,
     assumptions: sanitized.assumptions,
+    risks: sanitized.risks,
+    missingInfo: sanitized.missing_info,
     nextSteps: sanitized.next_steps
   });
 
@@ -136,7 +164,7 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
 
   return validateProposalMetadata({
     proposal_path: proposalPath,
-    sections: ["Executive Summary", "Recommended Solution", "Bill of Materials", "Assumptions"],
+    sections: ["Executive Summary", "Recommended Solution", "Options Considered", "Bill of Materials", "Assumptions", "Project Risks", "Information Required", "Next Steps"],
     human_approved: false
   });
 }
