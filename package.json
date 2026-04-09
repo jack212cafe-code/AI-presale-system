@@ -5,13 +5,13 @@
   "type": "module",
   "description": "Phase 1 scaffold for a one-person AI-native IT presale system.",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.8.0"
   },
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "test": "node --test --test-isolation=none",
-    "check": "node --test --test-isolation=none",
+    "test": "node --test",
+    "check": "node --test",
     "seed:kb": "node knowledge_base/embed.js",
     "seed:users": "node scripts/seed-users.js",
     "smoke": "node scripts/smoke.js"

@@ -6,51 +6,71 @@ import { fileURLToPath } from "node:url";
 
 import { normalizeKnowledgeDeletePayload, normalizeKnowledgeUploadPayload } from "./lib/admin-kb.js";
 import {
-  buildAdminSessionCookie,
-  buildExpiredAdminSessionCookie,
-  createAdminSession,
-  destroyAdminSession,
-  getAdminSessionToken,
-  isAdminAuthConfigured,
-  isAuthenticatedAdminRequest,
-  validateAdminPassword
-} from "./lib/admin-auth.js";
-import {
+  LOCAL_USERS,
   buildUserSessionCookie,
   buildExpiredUserSessionCookie,
   createUserSession,
   destroyUserSession,
   ensureUsersSeeded,
+  getSessionRole,
   getSessionUser,
   getSessionUserId,
   getUserSessionToken,
   isAuthenticatedUserRequest,
+  loadPersistedSessions,
   validateUserCredentials
 } from "./lib/user-auth.js";
 import { createJob, getJob, updateJob } from "./lib/admin-jobs.js";
 import { normalizeIntakePayload } from "./lib/intake.js";
-import { approveProject, createProjectRecord, getProjectById, listProjectsByUser, persistBomJson, persistRequirementsJson, persistSolutionJson, persistProposalMetadata } from "./lib/projects.js";
+import {
+  createProjectRecord,
+  getProjectById,
+  listProjectsByUser,
+  persistRequirementsJson,
+  persistSolutionJson,
+  persistBomJson,
+  approveProject,
+  recordProjectFeedback,
+  getAdminFeedbackSummary
+} from "./lib/projects.js";
 import { runDiscoveryAgent } from "./agents/discovery.js";
 import { runSolutionAgent } from "./agents/solution.js";
+import { runAllSpecialists } from "./agents/specialist.js";
 import { runBomAgent } from "./agents/bom.js";
 import { runProposalAgent } from "./agents/proposal.js";
-import { handleChatMessage } from "./lib/chat.js";
+import { checkBudgetOverrun } from "./lib/budget.js";
+import { handleChatMessage, withTimeout } from "./lib/chat.js";
+import { runTorPipeline } from "./agents/tor.js";
+import { generateTorComplianceCsv, getTorExportFilename } from "./lib/tor-export.js";
 import { getMessagesByConversation, getConversationsByProject } from "./lib/conversations.js";
-import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments } from "./lib/supabase.js";
+import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments, readAgentLogs } from "./lib/supabase.js";
 import { config } from "./lib/config.js";
 import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } from "./knowledge_base/raw-import-lib.js";
 import { upsertVendorPreference } from "./lib/user-preferences.js";
+import { checkKbCoverage } from "./scripts/check-kb-coverage.js";
+import { saveCorrection, listCorrections, aggregateCorrectionsToKb } from "./lib/corrections.js";
+import { requireRateLimit } from "./lib/rate-limit.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isMainModule = process.argv[1] === __filename;
+
+// In-memory TOR report cache (keyed by tor_id, TTL 24h)
+const torReports = new Map();
+const TOR_REPORT_TTL_MS = 24 * 60 * 60 * 1000;
+setInterval(() => {
+  const cutoff = Date.now() - TOR_REPORT_TTL_MS;
+  for (const [id, entry] of torReports) {
+    if (entry.ts < cutoff) torReports.delete(id);
+  }
+}, 60 * 60 * 1000).unref();
 
 function json(response, statusCode, payload, extraHeaders = {}) {
   response.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     ...extraHeaders
   });
-  response.end(JSON.stringify(payload, null, 2));
+  response.end(JSON.stringify(payload));
 }
 
 async function serveFile(response, filePath, contentType) {
@@ -64,8 +84,17 @@ async function serveFile(response, filePath, contentType) {
 }
 
 async function parseBody(request) {
+  const MAX_BODY_BYTES = 1_048_576;
   const chunks = [];
+  let totalBytes = 0;
   for await (const chunk of request) {
+    totalBytes += chunk.length;
+    if (totalBytes > MAX_BODY_BYTES) {
+      request.destroy();
+      const err = new Error("Request body too large");
+      err.statusCode = 413;
+      throw err;
+    }
     chunks.push(chunk);
   }
 
@@ -76,23 +105,23 @@ async function parseBody(request) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-function requireAdminAuth(request, response) {
-  if (!isAdminAuthConfigured()) {
-    json(response, 503, { ok: false, error: "ADMIN_PORTAL_PASSWORD is not configured" });
-    return false;
-  }
-
-  if (!isAuthenticatedAdminRequest(request)) {
-    json(response, 401, { ok: false, error: "Authentication required" });
-    return false;
-  }
-
-  return true;
-}
 
 function requireUserAuth(request, response) {
   if (!isAuthenticatedUserRequest(request)) {
     json(response, 401, { ok: false, error: "Authentication required" });
+    return false;
+  }
+  return true;
+}
+
+function requireRole(request, response, roles) {
+  if (!isAuthenticatedUserRequest(request)) {
+    json(response, 401, { ok: false, error: "Authentication required" });
+    return false;
+  }
+  const role = getSessionRole(request);
+  if (!roles.includes(role)) {
+    json(response, 403, { ok: false, error: "Insufficient permissions" });
     return false;
   }
   return true;
@@ -127,15 +156,43 @@ export async function appHandler(request, response) {
   const url = new URL(request.url ?? "/", config.publicBaseUrl);
 
   if (request.method === "GET" && url.pathname === "/health") {
-    return json(response, 200, {
-      status: "ok",
-      mode: getSupabaseAdmin() ? "integrated" : "local",
+    const PROBE_TIMEOUT_MS = 3000;
+    const probeTimeout = (promise) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), PROBE_TIMEOUT_MS))
+    ]);
+
+    const checks = {};
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      checks.supabase = await probeTimeout(
+        supabase.from("sessions").select("token").limit(1).then(({ error }) => error ? { ok: false, error: error.message } : { ok: true })
+      ).catch(err => ({ ok: false, error: err.message }));
+    } else {
+      checks.supabase = { ok: true, note: "local mode" };
+    }
+
+    if (config.openai.apiKey) {
+      checks.openai = await probeTimeout(
+        fetch("https://api.openai.com/v1/models", {
+          headers: { Authorization: `Bearer ${config.openai.apiKey}` }
+        }).then(r => r.ok ? { ok: true } : { ok: false, error: `HTTP ${r.status}` })
+      ).catch(err => ({ ok: false, error: err.message }));
+    } else {
+      checks.openai = { ok: false, error: "no API key" };
+    }
+
+    const allOk = Object.values(checks).every(c => c.ok);
+    return json(response, allOk ? 200 : 503, {
+      status: allOk ? "ok" : "degraded",
+      mode: supabase ? "integrated" : "local",
+      checks,
       timestamp: new Date().toISOString()
     });
   }
 
   if (request.method === "GET" && url.pathname === "/") {
-    return serveFile(response, path.join(__dirname, "intake", "index.html"), "text/html; charset=utf-8");
+    return serveFile(response, path.join(__dirname, "login", "login.html"), "text/html; charset=utf-8");
   }
 
   if (request.method === "GET" && url.pathname === "/admin") {
@@ -195,14 +252,15 @@ export async function appHandler(request, response) {
 
   if (request.method === "POST" && url.pathname === "/api/intake/analyze") {
     if (!requireUserAuth(request, response)) return;
+    if (!requireRateLimit(request, response, getSessionUserId(request), "pipeline")) return;
     try {
       const rawPayload = await parseBody(request);
       const intake = normalizeIntakePayload(rawPayload);
       const userId = getSessionUserId(request);
       const created = await createProjectRecord(intake, userId);
-      const requirements = await runDiscoveryAgent(intake, {
+      const requirements = await withTimeout(() => runDiscoveryAgent(intake, {
         projectId: created.project.id
-      });
+      }));
 
       const persisted = await persistRequirementsJson(created.project.id, requirements);
 
@@ -220,6 +278,7 @@ export async function appHandler(request, response) {
 
   if (request.method === "POST" && url.pathname === "/api/solution") {
     if (!requireUserAuth(request, response)) return;
+    if (!requireRateLimit(request, response, getSessionUserId(request), "pipeline")) return;
     try {
       const rawPayload = await parseBody(request);
       if (!rawPayload.project_id) {
@@ -234,7 +293,7 @@ export async function appHandler(request, response) {
         return json(response, 400, { ok: false, error: "Discovery must be completed before solution design" });
       }
 
-      const solution = await runSolutionAgent(project.requirements_json, { projectId: project.id });
+      const solution = await withTimeout(() => runSolutionAgent(project.requirements_json, { projectId: project.id }));
       return json(response, 200, { ok: true, project_id: project.id, solution });
     } catch (error) {
       return json(response, 400, { ok: false, error: error.message });
@@ -242,7 +301,7 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "POST" && url.pathname.match(/^\/api\/projects\/[^/]+\/approve$/)) {
-    if (!requireUserAuth(request, response)) return;
+    if (!requireRole(request, response, ["admin", "manager"])) return;
     const projectId = url.pathname.split("/")[3];
     try {
       const project = await getProjectById(projectId);
@@ -257,8 +316,59 @@ export async function appHandler(request, response) {
     }
   }
 
+  // POST /api/projects/:id/corrections — save a human correction
+  if (request.method === "POST" && url.pathname.match(/^\/api\/projects\/[^/]+\/corrections$/)) {
+    if (!requireRole(request, response, ["admin"])) return;
+    const rawId = url.pathname.split("/")[3];
+    const projectId = rawId === "general" ? null : rawId;
+    try {
+      const body = await parseBody(request);
+      const { field, wrong_value, correct_value, note } = body ?? {};
+      if (!field || !wrong_value || !correct_value) {
+        return json(response, 400, { ok: false, error: "field, wrong_value, correct_value are required" });
+      }
+      await saveCorrection({ projectId, field, wrongValue: wrong_value, correctValue: correct_value, note });
+      return json(response, 200, { ok: true });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  // GET /api/admin/audit — agent logs for audit trail
+  if (request.method === "GET" && url.pathname === "/api/admin/audit") {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const logs = await readAgentLogs(200);
+      return json(response, 200, { ok: true, logs });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  // GET /api/admin/corrections — list recent corrections
+  if (request.method === "GET" && url.pathname === "/api/admin/corrections") {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const corrections = await listCorrections({ limit: 100 });
+      return json(response, 200, { ok: true, corrections });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  // POST /api/admin/corrections/aggregate — push corrections into KB
+  if (request.method === "POST" && url.pathname === "/api/admin/corrections/aggregate") {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const result = await aggregateCorrectionsToKb();
+      return json(response, 200, { ok: true, kb_entries_upserted: result.count });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
   if (request.method === "GET" && url.pathname === "/api/admin/kb/documents") {
-    if (!requireAdminAuth(request, response)) {
+    if (!requireRole(request, response, ["admin"])) {
       return;
     }
 
@@ -271,30 +381,24 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/session") {
-    if (!isAdminAuthConfigured()) {
-      return json(response, 503, { ok: false, configured: false, error: "ADMIN_PORTAL_PASSWORD is not configured" });
-    }
-
-    return json(response, 200, {
-      ok: true,
-      configured: true,
-      authenticated: isAuthenticatedAdminRequest(request)
-    });
+    const role = getSessionRole(request);
+    const authenticated = isAuthenticatedUserRequest(request) && role === "admin";
+    return json(response, 200, { ok: true, configured: true, authenticated, role: role ?? null });
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/login") {
     try {
       const payload = await parseBody(request);
-      if (!validateAdminPassword(payload.password || "")) {
-        return json(response, 401, { ok: false, error: "Invalid password" });
+      const user = await validateUserCredentials(payload.username || "", payload.password || "");
+      if (!user || user.role !== "admin") {
+        return json(response, 401, { ok: false, error: "Invalid credentials or insufficient role" });
       }
-
-      const token = createAdminSession();
+      const token = createUserSession(user.id, user.display_name, user.role);
       return json(
         response,
         200,
-        { ok: true, authenticated: true },
-        { "Set-Cookie": buildAdminSessionCookie(token) }
+        { ok: true, authenticated: true, role: user.role },
+        { "Set-Cookie": buildUserSessionCookie(token) }
       );
     } catch (error) {
       return json(response, 400, { ok: false, error: error.message });
@@ -302,21 +406,18 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/logout") {
-    const token = getAdminSessionToken(request);
-    if (token) {
-      destroyAdminSession(token);
-    }
-
+    const token = getUserSessionToken(request);
+    if (token) destroyUserSession(token);
     return json(
       response,
       200,
       { ok: true, authenticated: false },
-      { "Set-Cookie": buildExpiredAdminSessionCookie() }
+      { "Set-Cookie": buildExpiredUserSessionCookie() }
     );
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/kb/upload") {
-    if (!requireAdminAuth(request, response)) {
+    if (!requireRole(request, response, ["admin"])) {
       return;
     }
 
@@ -348,7 +449,7 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "GET" && url.pathname.startsWith("/api/admin/kb/jobs/")) {
-    if (!requireAdminAuth(request, response)) {
+    if (!requireRole(request, response, ["admin"])) {
       return;
     }
 
@@ -362,7 +463,7 @@ export async function appHandler(request, response) {
   }
 
   if (request.method === "DELETE" && url.pathname === "/api/admin/kb/documents") {
-    if (!requireAdminAuth(request, response)) {
+    if (!requireRole(request, response, ["admin"])) {
       return;
     }
 
@@ -383,6 +484,7 @@ export async function appHandler(request, response) {
 
   if (request.method === "POST" && url.pathname === "/api/pipeline") {
     if (!requireUserAuth(request, response)) return;
+    if (!requireRateLimit(request, response, getSessionUserId(request), "pipeline")) return;
     let projectId = null;
     let project = null;
     let stageFailed = null;
@@ -403,22 +505,27 @@ export async function appHandler(request, response) {
       const discoveryResult = await persistRequirementsJson(projectId, requirements);
       project = discoveryResult.project ?? project;
 
-      // Stage 3: Solution
+      // Stage 3: Specialists + Solution
       stageFailed = "solution";
-      const solution = await runSolutionAgent(requirements, { projectId });
+      const specialistBriefs = await runAllSpecialists(requirements, { projectId });
+      const solution = await runSolutionAgent(requirements, { projectId, specialistBriefs });
       await persistSolutionJson(projectId, solution);
 
       // Stage 4: BOM
       stageFailed = "bom";
-      const bom = await runBomAgent(solution, { projectId });
+      const bom = await runBomAgent(solution, { projectId, specialistBriefs, requirements });
       await persistBomJson(projectId, bom);
+
+      // Budget overrun check before proposal
+      const selectedOpt = solution.options?.[solution.selected_option ?? 0];
+      const budgetWarning = checkBudgetOverrun(selectedOpt?.estimated_tco_thb, requirements.budget_range);
 
       // Auto-approve before proposal (per D-03: gate disabled for team self-review)
       await approveProject(projectId);
 
       // Stage 5: Proposal
       stageFailed = "proposal";
-      const proposalResult = await runProposalAgent(intake, requirements, solution, bom, { projectId });
+      const proposalResult = await runProposalAgent(intake, requirements, solution, bom, { projectId, budgetWarning });
 
       // Reload final project record
       const finalProject = await getProjectById(projectId);
@@ -515,38 +622,83 @@ export async function appHandler(request, response) {
 
   if (request.method === "POST" && url.pathname === "/api/chat") {
     if (!requireUserAuth(request, response)) return;
+    const chatUserId = getSessionUserId(request);
+    if (!requireRateLimit(request, response, chatUserId, "pipeline")) return;
     try {
       const payload = await parseBody(request);
       if (!payload.message || typeof payload.message !== "string" || !payload.message.trim()) {
         return json(response, 400, { ok: false, error: "message is required" });
       }
-      const userId = getSessionUserId(request);
+      const userId = chatUserId;
+
+      response.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no"
+      });
+
+      const sendEvent = (data) => {
+        response.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      const onProgress = (step, total, label) => {
+        sendEvent({ type: "progress", step, total, label });
+      };
+
       const result = await handleChatMessage({
         conversationId: payload.conversation_id || null,
         message: payload.message,
-        userId
+        userId,
+        onProgress
       });
 
       if (result.ok === false || result.stage === "error") {
-        return json(response, 200, {
-          ok: false,
-          error: result.text,
-          conversation_id: result.conversation_id,
-          project_id: result.project_id,
-          stage: result.stage
-        });
+        sendEvent({ type: "done", ok: false, error: result.text, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage });
+      } else {
+        sendEvent({ type: "done", ok: true, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage, text: result.text, created: result.created, grounding_warnings: result.grounding_warnings ?? 0 });
       }
-
-      return json(response, result.created ? 201 : 200, {
-        ok: true,
-        conversation_id: result.conversation_id,
-        project_id: result.project_id,
-        stage: result.stage,
-        text: result.text
-      });
+      response.end();
     } catch (error) {
-      return json(response, 500, { ok: false, error: error.message });
+      try { response.write(`data: ${JSON.stringify({ type: "done", ok: false, error: error.message })}\n\n`); response.end(); } catch {}
     }
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/tor") {
+    if (!requireUserAuth(request, response)) return;
+    if (!requireRateLimit(request, response, getSessionUserId(request), "pipeline")) return;
+    try {
+      const payload = await parseBody(request);
+      if (!payload.tor_text?.trim()) return json(response, 400, { ok: false, error: "tor_text is required" });
+
+      response.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no" });
+      const sendEvent = (data) => response.write(`data: ${JSON.stringify(data)}\n\n`);
+
+      const report = await runTorPipeline(payload.tor_text, {
+        onProgress: (step, total, label) => sendEvent({ type: "progress", step, total, label })
+      });
+
+      // Store report in memory keyed by tor_id for export
+      torReports.set(report.tor_id, { report, ts: Date.now() });
+      sendEvent({ type: "done", ok: true, report });
+      response.end();
+    } catch (error) {
+      try { response.write(`data: ${JSON.stringify({ type: "done", ok: false, error: error.message })}\n\n`); response.end(); } catch {}
+    }
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/tor\/[^/]+\/export$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const torId = url.pathname.split("/")[3];
+    const entry = torReports.get(torId);
+    if (!entry) return json(response, 404, { ok: false, error: "TOR report not found or expired" });
+    const report = entry.report;
+    const csv = generateTorComplianceCsv(report);
+    const filename = getTorExportFilename(report.project_name);
+    response.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}` });
+    response.end(csv);
   }
 
   if (request.method === "GET" && url.pathname.match(/^\/api\/proposals\/[^/]+\/download$/)) {
@@ -557,6 +709,7 @@ export async function appHandler(request, response) {
       if (!project || !project.proposal_url) {
         return json(response, 404, { ok: false, error: "Proposal not found" });
       }
+      // Path sanitization: avoid leaking absolute path in logs or errors by keeping it local
       const filePath = path.resolve(__dirname, project.proposal_url);
       const file = await readFile(filePath);
       const filename = path.basename(filePath);
@@ -608,7 +761,136 @@ export async function appHandler(request, response) {
     }
   }
 
-  return json(response, 404, { error: "Route not found" });
+  // ── User Management (admin only) ────────────────────────────────────────────
+
+  if (request.method === "POST" && url.pathname.match(/^\/api\/projects\/[^/]+\/feedback$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const projectId = url.pathname.split("/")[3];
+    try {
+      const body = await parseBody(request);
+      const rating = parseInt(body.rating);
+      if (isNaN(rating) || ![-1, 1].includes(rating)) {
+        return json(response, 400, { ok: false, error: "Rating must be 1 (up) or -1 (down)" });
+      }
+      const userId = getSessionUserId(request);
+      const result = await recordProjectFeedback(projectId, userId, rating);
+      return json(response, 200, { ok: result.saved });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/admin/feedback") {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const feedback = await getAdminFeedbackSummary();
+      return json(response, 200, { ok: true, feedback });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/admin/users") {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const client = getSupabaseAdmin();
+      if (!client) {
+        return json(response, 200, { ok: true, users: LOCAL_USERS.map(u => ({
+          id: u.username, username: u.username, display_name: u.display_name, role: u.role ?? "engineer"
+        })) });
+      }
+      const { data, error } = await client
+        .from("users")
+        .select("id, username, display_name, role, created_at")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return json(response, 200, { ok: true, users: data });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/users") {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const { username, password, display_name, role } = await parseBody(request);
+      if (!username || !password || !display_name) {
+        return json(response, 400, { ok: false, error: "username, password, display_name required" });
+      }
+      const validRoles = ["admin", "manager", "engineer"];
+      if (role && !validRoles.includes(role)) {
+        return json(response, 400, { ok: false, error: "role must be admin, manager, or engineer" });
+      }
+      const client = getSupabaseAdmin();
+      if (!client) return json(response, 501, { ok: false, error: "User management requires Supabase" });
+      const bcrypt = await import("bcryptjs");
+      const password_hash = await bcrypt.hash(password, 12);
+      const { data, error } = await client
+        .from("users")
+        .insert({ username, password_hash, display_name, role: role ?? "engineer" })
+        .select("id, username, display_name, role, created_at")
+        .single();
+      if (error) {
+        if (error.code === "23505") return json(response, 409, { ok: false, error: "Username already exists" });
+        throw error;
+      }
+      return json(response, 201, { ok: true, user: data });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "PATCH" && url.pathname.match(/^\/api\/admin\/users\/[^/]+$/)) {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const userId = url.pathname.split("/")[4];
+      const { role, display_name } = await parseBody(request);
+      const validRoles = ["admin", "manager", "engineer"];
+      if (role && !validRoles.includes(role)) {
+        return json(response, 400, { ok: false, error: "role must be admin, manager, or engineer" });
+      }
+      const client = getSupabaseAdmin();
+      if (!client) return json(response, 501, { ok: false, error: "User management requires Supabase" });
+      const patch = {};
+      if (role) patch.role = role;
+      if (display_name) patch.display_name = display_name;
+      if (Object.keys(patch).length === 0) return json(response, 400, { ok: false, error: "Nothing to update" });
+      const { data, error } = await client
+        .from("users")
+        .update(patch)
+        .eq("id", userId)
+        .select("id, username, display_name, role")
+        .single();
+      if (error) throw error;
+      if (!data) return json(response, 404, { ok: false, error: "User not found" });
+      return json(response, 200, { ok: true, user: data });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "DELETE" && url.pathname.match(/^\/api\/admin\/users\/[^/]+$/)) {
+    if (!requireRole(request, response, ["admin"])) return;
+    try {
+      const userId = url.pathname.split("/")[4];
+      const currentUserId = getSessionUserId(request);
+      if (userId === currentUserId) {
+        return json(response, 400, { ok: false, error: "Cannot delete your own account" });
+      }
+      const client = getSupabaseAdmin();
+      if (!client) return json(response, 501, { ok: false, error: "User management requires Supabase" });
+      const { error } = await client.from("users").delete().eq("id", userId);
+      if (error) throw error;
+      return json(response, 200, { ok: true });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (url.pathname.startsWith("/api/")) {
+    return json(response, 404, { error: "Route not found" });
+  }
+  return serveFile(response, path.join(__dirname, "error", "404.html"), "text/html; charset=utf-8");
 }
 
 export function createAppServer() {
@@ -616,9 +898,14 @@ export function createAppServer() {
 }
 
 if (isMainModule) {
+  if (!config.openai.apiKey && !config.forceLocalMode) {
+    console.warn("[FATAL] OPENAI_API_KEY is not set — all AI calls will fail. Set the key or use AI_PRESALE_FORCE_LOCAL=1");
+  }
   const server = createAppServer();
   server.listen(config.port, () => {
-    console.log(`AI Presale intake server listening on http://localhost:${config.port}`);
+    console.log(`Franky-Presale server listening on http://localhost:${config.port}`);
     ensureUsersSeeded().catch((err) => console.warn("[seed] failed:", err.message));
+    loadPersistedSessions().then(n => { if (n > 0) console.log(`[session] restored ${n} sessions`); }).catch((err) => console.warn("[session] restore failed:", err.message));
+    checkKbCoverage().catch((err) => console.warn("[KB] coverage check failed:", err.message));
   });
 }
