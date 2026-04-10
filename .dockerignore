@@ -1,0 +1,12 @@
+node_modules
+.kb-import-deps
+.git
+.planning
+coverage
+output
+test
+test-minimal.js
+*.md
+mempalace.yaml
+entities.json
+knowledge_base/raw/uploads/*.pdf
