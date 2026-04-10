@@ -3,172 +3,182 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Knowledge Admin — AI Presale</title>
+  <title>Knowledge Admin — Franky-Presale</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0c0e14;
-      --surface: #13161f;
-      --surface-2: #1a1e2a;
-      --border: rgba(255,255,255,0.06);
-      --border-strong: rgba(255,255,255,0.11);
-      --ink: #dce1ec;
-      --ink-dim: #8691a8;
-      --ink-faint: #3d4560;
-      --accent: #22d3ee;
-      --accent-dim: rgba(34,211,238,0.1);
-      --accent-glow: rgba(34,211,238,0.2);
-      --green: #10b981;
-      --green-dim: rgba(16,185,129,0.1);
-      --red: #ef4444;
-      --red-dim: rgba(239,68,68,0.1);
-      --radius: 16px;
-      --radius-sm: 10px;
-      --radius-xs: 6px;
+      --bg: #F9F7F4;
+      --surface: #FFFFFF;
+      --surface-2: #F5F2EE;
+      --surface-3: #EDE9E3;
+      --border: rgba(60,40,20,0.09);
+      --border-strong: rgba(60,40,20,0.14);
+      --ink: #1C1410;
+      --ink-dim: #6B5E52;
+      --ink-faint: #A8998C;
+      --accent: #C96442;
+      --accent-light: #E0734F;
+      --accent-dim: rgba(201,100,66,0.1);
+      --amber: #A86C10;
+      --amber-dim: rgba(168,108,16,0.1);
+      --green: #2D9E6B;
+      --green-dim: rgba(45,158,107,0.1);
+      --red: #C0392B;
+      --red-dim: rgba(192,57,43,0.08);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-xs: 5px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
-      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
       color: var(--ink);
       background: var(--bg);
-      background-image: radial-gradient(ellipse 70% 50% at 20% 0%, rgba(34,211,238,0.05), transparent);
     }
     main { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
 
-    /* Header */
-    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
-    .wordmark { display: flex; align-items: center; gap: 10px; }
-    .logo-mark { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), rgba(34,211,238,0.4)); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
-    .logo-mark svg { width: 16px; height: 16px; fill: #0c0e14; }
-    .logo-text { font-family: "Syne", sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
-    .logo-text span { color: var(--accent); }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+    .wordmark { display: flex; align-items: center; gap: 11px; }
+    .logo-mark {
+      width: 32px; height: 32px; background: var(--accent);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 15px; height: 15px; fill: #fff; }
+    .logo-text { font-family: "Lora", Georgia, serif; font-size: 15px; font-weight: 600; color: var(--ink); }
     .badge {
-      padding: 4px 12px;
-      background: rgba(245,158,11,0.1);
-      border: 1px solid rgba(245,158,11,0.25);
+      padding: 4px 13px;
+      background: var(--amber-dim); border: 1px solid rgba(168,108,16,0.22);
       border-radius: 999px;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: #f59e0b;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber);
     }
 
-    /* Hero */
     .hero { margin-bottom: 28px; }
-    .eyebrow {
-      font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+    .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+    h1 {
+      font-family: "Lora", Georgia, serif;
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; margin-bottom: 10px;
     }
-    h1 { font-family: "Syne", sans-serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.05em; line-height: 1.05; margin-bottom: 8px; }
-    .hero p { font-size: 14px; color: var(--ink-dim); line-height: 1.7; max-width: 600px; }
+    .hero p { font-size: 14.5px; color: var(--ink-dim); line-height: 1.75; max-width: 580px; }
 
-    /* Layout */
-    .layout { display: grid; gap: 20px; grid-template-columns: minmax(320px, 400px) 1fr; }
+    .layout { display: grid; gap: 18px; grid-template-columns: minmax(300px, 380px) 1fr; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-    /* Panel */
     .panel {
       background: var(--surface);
-      border: 1px solid var(--border-strong);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
+      box-shadow: 0 2px 12px rgba(60,40,20,0.06), 0 1px 3px rgba(60,40,20,0.04);
     }
-    .panel-header { padding: 20px 22px 0; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-    .panel-header h2 { font-family: "Syne", sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
-    .panel-header p { font-size: 13px; color: var(--ink-dim); line-height: 1.6; }
+    #login-panel { max-width: 420px; margin-bottom: 22px; }
 
-    /* Login panel */
-    #login-panel { max-width: 440px; margin-bottom: 24px; }
+    .panel-header { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); }
+    .panel-header h2 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+    .panel-header p { font-size: 13.5px; color: var(--ink-dim); line-height: 1.6; }
 
-    /* Form */
-    form { display: grid; gap: 14px; padding: 18px 22px 22px; }
-    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-    label { display: grid; gap: 5px; font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-dim); }
+    form { display: grid; gap: 13px; padding: 18px 22px 20px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    label { display: grid; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-dim); }
     input, select, textarea {
-      width: 100%; background: var(--surface-2); border: 1px solid var(--border-strong);
-      border-radius: var(--radius-sm); color: var(--ink); font-family: inherit; font-size: 13px;
-      padding: 10px 12px; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%; background: var(--surface-2); border: 1.5px solid var(--border-strong);
+      border-radius: var(--radius-sm); color: var(--ink);
+      font-family: "DM Sans", sans-serif; font-size: 13.5px;
+      padding: 9px 12px; outline: none; transition: border-color 0.15s;
     }
-    input:focus, select:focus, textarea:focus { border-color: rgba(34,211,238,0.35); box-shadow: 0 0 0 3px var(--accent-dim); }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
     input::placeholder, textarea::placeholder { color: var(--ink-faint); }
     textarea { min-height: 80px; resize: vertical; }
-    select option { background: var(--surface-2); }
+    select option { background: var(--surface); }
 
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .actions { display: flex; gap: 9px; flex-wrap: wrap; }
     button {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 9px 16px; border: none; border-radius: var(--radius-xs);
-      font-family: "Syne", sans-serif; font-size: 13px; font-weight: 700;
-      cursor: pointer; transition: opacity 0.15s, background 0.15s;
+      padding: 8px 16px; border: none; border-radius: var(--radius-xs);
+      font-family: "DM Sans", sans-serif; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
     }
-    button:disabled { opacity: 0.4; cursor: wait; }
-    .btn-primary { background: var(--accent); color: #0c0e14; box-shadow: 0 0 14px var(--accent-glow); }
-    .btn-primary:hover { opacity: 0.88; }
+    button:disabled { opacity: 0.35; cursor: wait; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
     .btn-secondary { background: var(--surface-2); color: var(--ink-dim); border: 1px solid var(--border-strong); }
-    .btn-secondary:hover { background: rgba(255,255,255,0.06); color: var(--ink); }
-    .btn-danger { background: var(--red-dim); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
-    .btn-danger:hover { background: rgba(239,68,68,0.18); }
+    .btn-secondary:hover { background: var(--surface-3); color: var(--ink); }
+    .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(192,57,43,0.18); }
+    .btn-danger:hover { background: rgba(192,57,43,0.14); }
 
-    /* Status */
     .status {
-      margin: 0 22px 18px; padding: 11px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 13px; line-height: 1.5;
-      background: var(--green-dim); border: 1px solid rgba(16,185,129,0.2); color: #6ee7b7;
+      margin: 0 22px 18px; padding: 10px 14px;
+      border-radius: var(--radius-sm); font-size: 13.5px; line-height: 1.5;
+      background: var(--green-dim); border: 1px solid rgba(45,158,107,0.2); color: var(--green);
       white-space: pre-wrap;
     }
-    .status.error { background: var(--red-dim); border-color: rgba(239,68,68,0.2); color: #fca5a5; }
+    .status.error { background: var(--red-dim); border-color: rgba(192,57,43,0.18); color: var(--red); }
     .status.neutral { background: var(--surface-2); border-color: var(--border-strong); color: var(--ink-dim); }
 
-    /* Progress */
     .progress { display: grid; gap: 8px; margin: 0 22px 18px; }
-    .progress-track { width: 100%; height: 6px; overflow: hidden; border-radius: 999px; background: var(--surface-2); }
-    .progress-fill { height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), rgba(34,211,238,0.5)); transition: width 180ms ease; }
-    .progress-meta { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-dim); }
+    .progress-track { width: 100%; height: 4px; overflow: hidden; border-radius: 999px; background: var(--surface-3); }
+    .progress-fill { height: 100%; width: 0%; border-radius: inherit; background: var(--accent); transition: width 180ms ease; }
+    .progress-meta { font-size: 11.5px; color: var(--ink-dim); }
 
-    /* Session bar */
-    .session-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--border); }
-    .session-note { font-size: 13px; color: var(--ink-dim); }
+    .session-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 22px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+    .session-note { font-size: 13.5px; color: var(--ink-dim); }
 
-    /* Toolbar */
     .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 22px 0; }
-    .toolbar h2 { font-family: "Syne", sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 3px; }
+    .toolbar h2 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
     .toolbar p { font-size: 13px; color: var(--ink-dim); }
 
-    /* Doc list */
-    .doc-list { display: grid; gap: 12px; padding: 16px 22px 22px; }
+    .doc-list { display: grid; gap: 10px; padding: 16px 22px 22px; }
     .empty {
-      padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
-      color: var(--ink-faint); font-size: 13px; text-align: center;
+      padding: 24px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+      color: var(--ink-faint); font-size: 13.5px; text-align: center;
     }
     .doc-card {
-      padding: 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-      background: var(--surface-2); display: grid; gap: 10px;
-      transition: border-color 0.15s;
+      padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface-2); display: grid; gap: 9px;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .doc-card:hover { border-color: rgba(255,255,255,0.18); }
+    .doc-card:hover { border-color: rgba(201,100,66,0.35); box-shadow: 0 2px 8px rgba(60,40,20,0.06); }
     .doc-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
-    .doc-head h3 { font-family: "Syne", sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 3px; letter-spacing: -0.02em; }
-    .doc-meta, .doc-path { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-dim); line-height: 1.5; }
+    .doc-head h3 { font-size: 13.5px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+    .doc-meta, .doc-path { font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip {
       padding: 3px 9px; border-radius: 999px;
-      background: var(--accent-dim); border: 1px solid rgba(34,211,238,0.15);
-      color: var(--accent); font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.04em;
+      background: var(--accent-dim); border: 1px solid rgba(201,100,66,0.18);
+      color: var(--accent); font-size: 11px; font-weight: 500; letter-spacing: 0.03em;
     }
 
     .hidden { display: none !important; }
+
+    .audit-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .audit-table th {
+      background: var(--surface-2); padding: 8px 12px; text-align: left;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--ink-dim); border-bottom: 1px solid var(--border-strong);
+    }
+    .audit-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--ink-dim); vertical-align: middle; }
+    .audit-table td:first-child { color: var(--ink); font-weight: 500; }
+    .audit-table tr:last-child td { border-bottom: none; }
+    .audit-table tr:hover td { background: var(--surface-2); }
+    .status-pill {
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    }
+    .status-pill.success { background: var(--green-dim); color: var(--green); }
+    .status-pill.error { background: var(--red-dim); color: var(--red); }
   </style>
 </head>
 <body>
   <main>
     <div class="page-header">
       <div class="wordmark">
-        <div class="logo-mark"><svg viewBox="0 0 20 20"><path d="M10 2L2 7v6l8 5 8-5V7L10 2zM10 4.18L16 8v4l-6 3.75L4 12V8l6-3.82z"/></svg></div>
-        <div class="logo-text">AI <span>Presale</span></div>
+        <div class="logo-mark"><svg viewBox="0 0 20 20"><path d="M10 1.5L2.5 6v8l7.5 4.5L17.5 14V6L10 1.5zm0 2.18L15.5 7v6l-5.5 3.3L4.5 13V7L10 3.68z"/></svg></div>
+        <div class="logo-text">Franky-Presale</div>
       </div>
-      <div class="badge">ADMIN PORTAL</div>
+      <div class="badge">Admin Portal</div>
     </div>
 
     <div class="hero">
@@ -180,12 +190,11 @@
     <section id="login-panel" class="panel">
       <div class="panel-header">
         <h2>Admin Login</h2>
-        <p>ใส่รหัสผ่านของ admin portal</p>
+        <p>เข้าสู่ระบบด้วยบัญชี Admin</p>
       </div>
       <form id="login-form">
-        <label>Password
-          <input id="password-input" name="password" type="password" required placeholder="••••••••" />
-        </label>
+        <label>Username<input id="username-input" name="username" type="text" required placeholder="admin" autocomplete="username" /></label>
+        <label>Password<input id="password-input" name="password" type="password" required placeholder="••••••••" autocomplete="current-password" /></label>
         <div class="actions">
           <button type="submit" class="btn-primary">Login</button>
         </div>
@@ -194,32 +203,21 @@
     </section>
 
     <section id="portal-layout" class="layout hidden">
-      <!-- Upload Panel -->
       <article class="panel">
         <div class="panel-header">
           <h2>Upload Document</h2>
           <p>เลือกไฟล์ ใส่ข้อมูล แล้วกด Import — ระบบจะบันทึกและนำเข้า knowledge base ให้อัตโนมัติ</p>
         </div>
-
         <div class="session-bar">
           <span class="session-note">ล็อกอินแล้ว · พร้อม upload</span>
           <button type="button" class="btn-secondary" id="logout-button">Logout</button>
         </div>
-
         <form id="upload-form">
-          <label>File
-            <input id="file-input" name="file" type="file" required />
-          </label>
+          <label>File<input id="file-input" name="file" type="file" required /></label>
           <div class="grid">
-            <label>Title
-              <input name="title" placeholder="ชื่อเอกสาร" />
-            </label>
-            <label>Vendor
-              <input name="vendor" placeholder="Nutanix, Veeam, Dell..." />
-            </label>
-            <label>Product Family
-              <input name="product_family" placeholder="HCI, Backup, DR..." />
-            </label>
+            <label>Title<input name="title" placeholder="ชื่อเอกสาร" /></label>
+            <label>Vendor<input name="vendor" placeholder="Nutanix, Veeam, Dell..." /></label>
+            <label>Product Family<input name="product_family" placeholder="HCI, Backup, DR..." /></label>
             <label>Document Type
               <select name="document_type">
                 <option value="">Auto detect</option>
@@ -241,22 +239,15 @@
                 <option value="general_reference">General Reference</option>
               </select>
             </label>
-            <label>Revision Date
-              <input name="revision_date" type="date" />
-            </label>
+            <label>Revision Date<input name="revision_date" type="date" /></label>
           </div>
-          <label>Tags
-            <input name="tags" placeholder="เช่น hci, datasource, veeam" />
-          </label>
-          <label>Trust Level
-            <input name="trust_level" placeholder="vendor_official / internal_summary" />
-          </label>
+          <label>Tags<input name="tags" placeholder="เช่น hci, datasource, veeam" /></label>
+          <label>Trust Level<input name="trust_level" placeholder="vendor_official / internal_summary" /></label>
           <div class="actions">
             <button type="submit" class="btn-primary" id="upload-button">Import document</button>
             <button type="button" class="btn-secondary" id="refresh-button">Refresh list</button>
           </div>
         </form>
-
         <div id="status" class="status neutral">พร้อมใช้งาน</div>
         <div id="progress-box" class="progress hidden">
           <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
@@ -264,7 +255,6 @@
         </div>
       </article>
 
-      <!-- Documents Panel -->
       <article class="panel">
         <div class="toolbar">
           <div>
@@ -277,9 +267,97 @@
           <div class="empty">กำลังโหลดรายการเอกสาร...</div>
         </div>
       </article>
+
+      <article class="panel">
+        <div class="toolbar">
+          <div>
+            <h2>Log Correction</h2>
+            <p>บันทึกค่าที่ผิดพลาดจาก BOM / Solution ให้ระบบเรียนรู้</p>
+          </div>
+          <button type="button" class="btn-secondary" id="aggregate-btn">Push to KB</button>
+        </div>
+        <form id="correction-form" style="display:flex;flex-direction:column;gap:12px;margin-top:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label>Project ID (optional)<input id="corr-project-id" type="text" placeholder="uuid หรือเว้นว่าง" /></label>
+            <label>Field / Category<input id="corr-field" type="text" placeholder="e.g. server_model, backup_license" required /></label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label>Wrong value<input id="corr-wrong" type="text" placeholder="e.g. PowerStore T40" required /></label>
+            <label>Correct value<input id="corr-correct" type="text" placeholder="e.g. PowerStore 1200T" required /></label>
+          </div>
+          <label>Note (optional)<input id="corr-note" type="text" placeholder="บริบทเพิ่มเติม" /></label>
+          <div><button type="submit" class="btn-primary">Save Correction</button></div>
+          <div id="corr-status" style="font-size:13px;color:var(--green);min-height:18px"></div>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="toolbar">
+          <div>
+            <h2>Recent Corrections</h2>
+            <p>Human feedback ที่บันทึกไว้ล่าสุด</p>
+          </div>
+          <button type="button" class="btn-secondary" id="reload-corrections-btn">Reload</button>
+        </div>
+        <div id="corrections-list" style="margin-top:16px">
+          <div class="empty">กำลังโหลด...</div>
+        </div>
+      </article>
+
+      <article class="panel" style="grid-column:1/-1">
+        <div class="toolbar">
+          <div>
+            <h2>Project Feedback</h2>
+            <p>คะแนนความพึงพอใจต่อคุณภาพของ Proposal</p>
+          </div>
+          <button type="button" class="btn-secondary" id="reload-feedback-btn">Reload</button>
+        </div>
+        <div id="feedback-list" style="overflow-x:auto;padding:0 0 16px">
+          <div class="empty" style="margin:16px 22px">กำลังโหลด...</div>
+        </div>
+      </article>
+
+      <article class="panel" style="grid-column:1/-1">
+        <div class="toolbar">
+          <div>
+            <h2>Audit Trail</h2>
+            <p>Agent calls ล่าสุด — model, tokens, cost, duration</p>
+          </div>
+          <button type="button" class="btn-secondary" id="reload-audit-btn">Reload</button>
+        </div>
+        <div id="audit-list" style="overflow-x:auto;padding:0 0 16px">
+          <div class="empty" style="margin:16px 22px">กำลังโหลด...</div>
+        </div>
+      </article>
+
+      <article class="panel" style="grid-column:1/-1">
+        <div class="toolbar">
+          <div>
+            <h2>User Management</h2>
+            <p>จัดการ users และ roles — Admin / Manager / Engineer</p>
+          </div>
+          <button type="button" class="btn-secondary" id="reload-users-btn">Reload</button>
+        </div>
+        <form id="create-user-form" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;padding:16px 22px;border-bottom:1px solid var(--border)">
+          <label style="margin:0">Username<input id="new-username" type="text" required placeholder="จอห์น" /></label>
+          <label style="margin:0">Password<input id="new-password" type="password" required placeholder="••••••••" /></label>
+          <label style="margin:0">Display Name<input id="new-display-name" type="text" required placeholder="John Smith" /></label>
+          <label style="margin:0">Role
+            <select id="new-role">
+              <option value="engineer">Engineer</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+          <button type="submit" class="btn-primary" style="align-self:end">Add User</button>
+        </form>
+        <div id="user-create-status" style="font-size:13px;min-height:18px;padding:6px 22px;color:var(--green)"></div>
+        <div id="users-list" style="overflow-x:auto;padding:0 0 16px">
+          <div class="empty" style="margin:16px 22px">กำลังโหลด...</div>
+        </div>
+      </article>
     </section>
   </main>
-
   <script type="module" src="/admin/admin.js"></script>
 </body>
 </html>

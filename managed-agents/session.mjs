@@ -13,15 +13,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config();
 config({ path: path.join(__dirname, ".env.managed-agents") });
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+let client;
+let AGENT_ID;
+let ENV_ID;
 
-const AGENT_ID = process.env.MANAGED_AGENT_ID;
-const ENV_ID = process.env.MANAGED_AGENT_ENV_ID;
+function ensureInitialized() {
+  if (!client) {
+    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    AGENT_ID = process.env.MANAGED_AGENT_ID;
+    ENV_ID = process.env.MANAGED_AGENT_ENV_ID;
 
-if (!AGENT_ID || !ENV_ID) {
-  throw new Error(
-    "MANAGED_AGENT_ID / MANAGED_AGENT_ENV_ID not set. Run: node managed-agents/setup.mjs",
-  );
+    if (!AGENT_ID || !ENV_ID) {
+      throw new Error(
+        "MANAGED_AGENT_ID / MANAGED_AGENT_ENV_ID not set. Run: node managed-agents/setup.mjs",
+      );
+    }
+  }
 }
 
 /**
@@ -34,6 +41,7 @@ if (!AGENT_ID || !ENV_ID) {
  * @returns {Promise<{ text: string }>}
  */
 export async function chat(projectId, userText, onStream) {
+  ensureInitialized();
   const sessionId = await getOrCreateSession(projectId);
   return runTurn(sessionId, projectId, userText, onStream);
 }

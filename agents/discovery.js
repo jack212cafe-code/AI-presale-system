@@ -13,10 +13,11 @@ const __dirname = path.dirname(__filename);
 
 export const CATEGORY_TO_USE_CASES = {
   "HCI":        ["HCI"],
+  "3-Tier":     ["3-Tier"],
   "DR":         ["Disaster Recovery"],
   "Backup":     ["Backup & Recovery"],
   "Security":   ["Cybersecurity"],
-  "Full-stack": ["HCI", "Disaster Recovery", "Backup & Recovery", "Cybersecurity"]
+  "Full-stack": ["HCI", "3-Tier", "Disaster Recovery", "Backup & Recovery", "Cybersecurity"]
 };
 
 const DISCOVERY_DEFAULTS = {
@@ -34,7 +35,8 @@ function deriveUseCases(intake) {
   if (content.includes("backup")) useCases.push("Backup & Recovery");
   if (content.includes("dr") || content.includes("disaster")) useCases.push("Disaster Recovery");
   if (content.includes("security") || content.includes("ransomware")) useCases.push("Cybersecurity");
-  if (content.includes("hci") || content.includes("virtual") || content.includes("vm")) useCases.push("HCI");
+  if (content.includes("hci") || content.includes("hyperconverge") || content.includes("nutanix") || content.includes("simplivity") || content.includes("vxrail")) useCases.push("HCI");
+  if (content.includes("3-tier") || content.includes("3 tier") || content.includes("server") || content.includes("storage appliance") || content.includes("san") || content.includes("nas")) useCases.push("3-Tier");
 
   if (useCases.length === 0) {
     useCases.push(intake.primary_use_case);
@@ -123,9 +125,21 @@ const discoveryTextFormat = {
         properties: {
           users: { type: ["number", "integer", "null"] },
           vm_count: { type: ["number", "integer", "null"] },
-          storage_tb: { type: ["number", "integer", "null"] }
+          storage_tb: { type: ["number", "integer", "null"] },
+          vm_count_3yr: { type: ["number", "integer", "null"] }
         },
-        required: ["users", "vm_count", "storage_tb"]
+        required: ["users", "vm_count", "storage_tb", "vm_count_3yr"]
+      },
+      existing_infrastructure: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          switches: { type: ["string", "null"] },
+          rack_power_kw: { type: ["number", "null"] },
+          fiber_available: { type: ["boolean", "null"] },
+          notes: { type: ["string", "null"] }
+        },
+        required: ["switches", "rack_power_kw", "fiber_available", "notes"]
       },
       budget_range: { type: ["string", "null"] },
       timeline: { type: ["string", "null"] },
@@ -140,7 +154,7 @@ const discoveryTextFormat = {
       source_mode: { type: ["string", "null"] },
       category: {
         type: "string",
-        enum: ["HCI", "DR", "Backup", "Security", "Full-stack"]
+        enum: ["HCI", "3-Tier", "DR", "Backup", "Security", "Full-stack"]
       },
       assumptions_applied: {
         type: "array",
@@ -158,6 +172,7 @@ const discoveryTextFormat = {
       "recommended_next_questions",
       "success_criteria",
       "scale",
+      "existing_infrastructure",
       "budget_range",
       "timeline",
       "constraints",
@@ -205,7 +220,14 @@ function buildMockRequirements(intake, mode) {
     scale: {
       users: intake.users ?? DISCOVERY_DEFAULTS.users,
       vm_count: intake.vm_count ?? DISCOVERY_DEFAULTS.vm_count,
-      storage_tb: intake.storage_tb ?? DISCOVERY_DEFAULTS.storage_tb
+      storage_tb: intake.storage_tb ?? DISCOVERY_DEFAULTS.storage_tb,
+      vm_count_3yr: null
+    },
+    existing_infrastructure: {
+      switches: null,
+      rack_power_kw: null,
+      fiber_available: null,
+      notes: null
     },
     budget_range: intake.budget_range_thb ?? DISCOVERY_DEFAULTS.budget_range_thb,
     timeline: intake.timeline ?? null,
@@ -237,12 +259,18 @@ function sanitizeRequirements(output, intake) {
       : { name: intake.customer_name, industry: intake.industry ?? null };
   const scale =
     requirements.scale && typeof requirements.scale === "object"
-      ? requirements.scale
+      ? { ...requirements.scale, vm_count_3yr: requirements.scale.vm_count_3yr ?? null }
       : {
           users: intake.users ?? null,
           vm_count: intake.vm_count ?? null,
-          storage_tb: intake.storage_tb ?? null
+          storage_tb: intake.storage_tb ?? null,
+          vm_count_3yr: null
         };
+
+  const existingInfrastructure =
+    requirements.existing_infrastructure && typeof requirements.existing_infrastructure === "object"
+      ? requirements.existing_infrastructure
+      : { switches: null, rack_power_kw: null, fiber_available: null, notes: null };
 
   return {
     customer_profile: customerProfile,
@@ -276,6 +304,7 @@ function sanitizeRequirements(output, intake) {
     recommended_next_questions: toArray(requirements.recommended_next_questions),
     success_criteria: toArray(requirements.success_criteria),
     scale,
+    existing_infrastructure: existingInfrastructure,
     budget_range: requirements.budget_range ?? intake.budget_range_thb ?? null,
     timeline: requirements.timeline ?? intake.timeline ?? null,
     constraints: toArray(requirements.constraints),

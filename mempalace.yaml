@@ -1,0 +1,36 @@
+wing: ai_presale_system
+rooms:
+- name: admin
+  description: Files from admin/
+- name: agents
+  description: Files from agents/
+- name: chat
+  description: Files from chat/
+- name: error
+  description: Files from error/
+- name: intake
+  description: Files from intake/
+- name: knowledge_base
+  description: Files from knowledge_base/
+- name: lib
+  description: Files from lib/
+- name: login
+  description: Files from login/
+- name: n8n
+  description: Files from n8n/
+- name: output
+  description: Files from output/
+- name: raw
+  description: Files from raw/
+- name: scripts
+  description: Files from scripts/
+- name: supabase
+  description: Files from supabase/
+- name: templates
+  description: Files from templates/
+- name: testing
+  description: Files from test/
+- name: documentation
+  description: Files from wiki/
+- name: general
+  description: Files that don't fit other rooms

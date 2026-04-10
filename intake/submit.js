@@ -74,7 +74,7 @@ function appendAssistantRichReply(payload, requestPayload) {
     : `<div class="chip">ตอนนี้ข้อมูลตั้งต้นพอสำหรับเดินต่อได้</div>`;
 
   appendMessage(
-    "AI Presale Assistant",
+    "Franky-Presale",
     `
       รับเคสนี้แล้วครับ ตอนนี้ผมมองว่าโจทย์หลักอยู่ที่ <strong>${escapeHtml(summaryFocus)}</strong>
       และเป้าหมายคือ <strong>${escapeHtml(requestPayload.desired_outcome.toLowerCase())}</strong>
@@ -110,7 +110,7 @@ form.addEventListener("submit", async (event) => {
   const payload = buildPayload(message);
   appendMessage("คุณ", escapeHtml(message), "user");
   appendMessage(
-    "AI Presale Assistant",
+    "Franky-Presale",
     `
       <div class="typing">
         <span>กำลังวิเคราะห์เคสนี้</span>
@@ -144,7 +144,7 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     pendingNode.remove();
     appendMessage(
-      "AI Presale Assistant",
+      "Franky-Presale",
       `
         <div class="banner error">ยังประมวลผลไม่สำเร็จ</div>
         <div style="margin-top:10px">${escapeHtml(error.message)}</div>

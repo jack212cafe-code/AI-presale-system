@@ -199,6 +199,10 @@ async function syncSession() {
     resetProgress();
     setStatus("พร้อมใช้งาน");
     await loadDocuments();
+    await loadCorrections();
+    await loadAuditTrail();
+    await loadUsers();
+    await loadFeedback();
     return true;
   }
 
@@ -209,12 +213,13 @@ async function syncSession() {
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  const username = new FormData(loginForm).get("username");
   const password = new FormData(loginForm).get("password");
-  setLoginStatus("กำลังตรวจสอบรหัสผ่าน...");
+  setLoginStatus("กำลังตรวจสอบ...");
 
   const { response, payload } = await apiFetch("/api/admin/login", {
     method: "POST",
-    body: JSON.stringify({ password })
+    body: JSON.stringify({ username, password })
   });
 
   if (!response.ok) {
@@ -322,5 +327,270 @@ refreshButton.addEventListener("click", () => {
 reloadDocsButton.addEventListener("click", () => {
   loadDocuments();
 });
+
+// ── Feedback UI ───────────────────────────────────────────────────────────────
+
+const feedbackList = document.querySelector("#feedback-list");
+const reloadFeedbackBtn = document.querySelector("#reload-feedback-btn");
+
+async function loadFeedback() {
+  feedbackList.innerHTML = '<div class="empty" style="margin:16px 22px">กำลังโหลด...</div>';
+  try {
+    const { response, payload } = await apiFetch("/api/admin/feedback", { method: "GET" });
+    if (!response.ok) throw new Error(payload.error || "Load failed");
+    const rows = payload.feedback ?? [];
+    if (rows.length === 0) {
+      feedbackList.innerHTML = '<div class="empty" style="margin:16px 22px">ยังไม่มีข้อมูล feedback</div>';
+      return;
+    }
+    feedbackList.innerHTML = `
+      <table class="audit-table">
+        <thead><tr>
+          <th>Customer</th><th>Rating</th><th>Date</th>
+        </tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td>${escapeHtml(r.projects?.customer_name || "Unknown")}</td>
+          <td><span class="status-pill ${r.rating === 1 ? "success" : "error"}">${r.rating === 1 ? "👍 Up" : "👎 Down"}</span></td>
+          <td>${new Date(r.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}</td>
+        </tr>`).join("")}</tbody>
+      </table>`;
+  } catch (error) {
+    feedbackList.innerHTML = `<div class="empty" style="margin:16px 22px">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+reloadFeedbackBtn?.addEventListener("click", () => loadFeedback());
+
+// ── Corrections UI ────────────────────────────────────────────────────────────
+
+const correctionForm = document.querySelector("#correction-form");
+const corrStatus = document.querySelector("#corr-status");
+const correctionsList = document.querySelector("#corrections-list");
+const reloadCorrectionsBtn = document.querySelector("#reload-corrections-btn");
+const aggregateBtn = document.querySelector("#aggregate-btn");
+
+function setCorrStatus(msg, type = "ok") {
+  corrStatus.textContent = msg;
+  corrStatus.style.color = type === "error" ? "var(--red)" : "var(--green)";
+}
+
+async function loadCorrections() {
+  correctionsList.innerHTML = '<div class="empty">กำลังโหลด...</div>';
+  try {
+    const { response, payload } = await apiFetch("/api/admin/corrections", { method: "GET" });
+    if (!response.ok) throw new Error(payload.error || "Load failed");
+    const rows = payload.corrections ?? [];
+    if (rows.length === 0) {
+      correctionsList.innerHTML = '<div class="empty">ยังไม่มี correction ที่บันทึกไว้</div>';
+      return;
+    }
+    correctionsList.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="text-align:left;border-bottom:1px solid var(--border-strong)">
+        <th style="padding:6px 8px">Field</th>
+        <th style="padding:6px 8px">Wrong</th>
+        <th style="padding:6px 8px">Correct</th>
+        <th style="padding:6px 8px">Note</th>
+        <th style="padding:6px 8px">Date</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px;font-weight:500">${escapeHtml(r.field)}</td>
+        <td style="padding:6px 8px;color:var(--red)">${escapeHtml(r.wrong_value)}</td>
+        <td style="padding:6px 8px;color:var(--green)">${escapeHtml(r.correct_value)}</td>
+        <td style="padding:6px 8px;color:var(--ink-dim)">${escapeHtml(r.note)}</td>
+        <td style="padding:6px 8px;color:var(--ink-faint)">${new Date(r.created_at).toLocaleDateString("th-TH")}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  } catch (error) {
+    correctionsList.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+correctionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const projectId = document.querySelector("#corr-project-id").value.trim() || null;
+  const field = document.querySelector("#corr-field").value.trim();
+  const wrongValue = document.querySelector("#corr-wrong").value.trim();
+  const correctValue = document.querySelector("#corr-correct").value.trim();
+  const note = document.querySelector("#corr-note").value.trim();
+
+  setCorrStatus("กำลังบันทึก...");
+  try {
+    const endpoint = projectId
+      ? `/api/projects/${encodeURIComponent(projectId)}/corrections`
+      : "/api/projects/general/corrections";
+    const { response, payload } = await apiFetch(endpoint, {
+      method: "POST",
+      body: JSON.stringify({ field, wrong_value: wrongValue, correct_value: correctValue, note })
+    });
+    if (!response.ok) throw new Error(payload.error || "Save failed");
+    setCorrStatus("บันทึกแล้ว");
+    correctionForm.reset();
+    await loadCorrections();
+  } catch (error) {
+    setCorrStatus(error.message, "error");
+  }
+});
+
+aggregateBtn?.addEventListener("click", async () => {
+  if (!confirm("ยืนยันการ Push corrections เข้า KB? ข้อมูลที่มีอยู่ใน KB จะถูก overwrite")) return;
+  aggregateBtn.disabled = true;
+  aggregateBtn.textContent = "กำลัง push...";
+  try {
+    const { response, payload } = await apiFetch("/api/admin/corrections/aggregate", { method: "POST" });
+    if (!response.ok) throw new Error(payload.error || "Aggregate failed");
+    setCorrStatus(`Push สำเร็จ — ${payload.kb_entries_upserted} KB entries updated`);
+  } catch (error) {
+    setCorrStatus(error.message, "error");
+  } finally {
+    aggregateBtn.disabled = false;
+    aggregateBtn.textContent = "Push to KB";
+  }
+});
+
+reloadCorrectionsBtn?.addEventListener("click", () => loadCorrections());
+
+const auditList = document.querySelector("#audit-list");
+const reloadAuditBtn = document.querySelector("#reload-audit-btn");
+
+async function loadAuditTrail() {
+  auditList.innerHTML = '<div class="empty" style="margin:16px 22px">กำลังโหลด...</div>';
+  try {
+    const { response, payload } = await apiFetch("/api/admin/audit", { method: "GET" });
+    if (!response.ok) throw new Error(payload.error || "Load failed");
+    const logs = payload.logs ?? [];
+    if (logs.length === 0) {
+      auditList.innerHTML = '<div class="empty" style="margin:16px 22px">ยังไม่มี agent logs</div>';
+      return;
+    }
+    const totalCost = logs.reduce((s, r) => s + (r.cost_usd ?? 0), 0);
+    auditList.innerHTML = `
+      <div style="padding:10px 22px 6px;font-size:12.5px;color:var(--ink-dim)">
+        ${logs.length} calls · รวม $${totalCost.toFixed(4)} USD
+      </div>
+      <table class="audit-table">
+        <thead><tr>
+          <th>Agent</th><th>Model</th><th>Tokens</th>
+          <th>Cost (USD)</th><th>Duration</th><th>Status</th><th>Date</th>
+        </tr></thead>
+        <tbody>${logs.map(r => `<tr>
+          <td>${escapeHtml(r.agent_name)}</td>
+          <td>${escapeHtml(r.model_used ?? "—")}</td>
+          <td>${(r.tokens_used ?? 0).toLocaleString()}</td>
+          <td>$${(r.cost_usd ?? 0).toFixed(4)}</td>
+          <td>${r.duration_ms ? r.duration_ms + "ms" : "—"}</td>
+          <td><span class="status-pill ${r.status === "error" ? "error" : "success"}">${escapeHtml(r.status ?? "—")}</span></td>
+          <td>${new Date(r.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+        </tr>`).join("")}</tbody>
+      </table>
+    `;
+  } catch (error) {
+    auditList.innerHTML = `<div class="empty" style="margin:16px 22px">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+reloadAuditBtn?.addEventListener("click", () => loadAuditTrail());
+
+// ── User Management ───────────────────────────────────────────────────────────
+
+const usersList = document.querySelector("#users-list");
+const reloadUsersBtn = document.querySelector("#reload-users-btn");
+const createUserForm = document.querySelector("#create-user-form");
+const userCreateStatus = document.querySelector("#user-create-status");
+
+const ROLE_LABELS = { admin: "Admin", manager: "Manager", engineer: "Engineer" };
+
+function renderUsers(users) {
+  if (!Array.isArray(users) || users.length === 0) {
+    usersList.innerHTML = '<div class="empty" style="margin:16px 22px">ยังไม่มี users</div>';
+    return;
+  }
+  usersList.innerHTML = `<table class="audit-table">
+    <thead><tr>
+      <th>Username</th><th>Display Name</th><th>Role</th><th>Joined</th><th></th>
+    </tr></thead>
+    <tbody>${users.map(u => `<tr data-user-id="${escapeHtml(u.id)}">
+      <td>${escapeHtml(u.username)}</td>
+      <td>${escapeHtml(u.display_name)}</td>
+      <td>
+        <select class="role-select" data-user-id="${escapeHtml(u.id)}" style="font-size:12.5px;padding:3px 6px;border-radius:5px;border:1px solid var(--border-strong);background:var(--surface-2)">
+          ${["engineer","manager","admin"].map(r => `<option value="${r}" ${r === u.role ? "selected" : ""}>${ROLE_LABELS[r]}</option>`).join("")}
+        </select>
+      </td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString("th-TH") : "—"}</td>
+      <td><button type="button" class="danger" style="font-size:12px;padding:4px 10px" data-delete-user="${escapeHtml(u.id)}">Delete</button></td>
+    </tr>`).join("")}</tbody>
+  </table>`;
+}
+
+async function loadUsers() {
+  usersList.innerHTML = '<div class="empty" style="margin:16px 22px">กำลังโหลด...</div>';
+  try {
+    const { response, payload } = await apiFetch("/api/admin/users", { method: "GET" });
+    if (!response.ok) throw new Error(payload.error || "Load failed");
+    renderUsers(payload.users ?? []);
+  } catch (error) {
+    usersList.innerHTML = `<div class="empty" style="margin:16px 22px">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+usersList?.addEventListener("change", async (event) => {
+  const select = event.target.closest(".role-select");
+  if (!select) return;
+  const userId = select.dataset.userId;
+  const role = select.value;
+  try {
+    const { response, payload } = await apiFetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role })
+    });
+    if (!response.ok) throw new Error(payload.error || "Update failed");
+  } catch (error) {
+    alert(error.message);
+    await loadUsers();
+  }
+});
+
+usersList?.addEventListener("click", async (event) => {
+  const btn = event.target.closest("[data-delete-user]");
+  if (!btn) return;
+  const userId = btn.dataset.deleteUser;
+  if (!window.confirm("ลบ user นี้?")) return;
+  btn.disabled = true;
+  try {
+    const { response, payload } = await apiFetch(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+    if (!response.ok) throw new Error(payload.error || "Delete failed");
+    await loadUsers();
+  } catch (error) {
+    alert(error.message);
+    btn.disabled = false;
+  }
+});
+
+createUserForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  userCreateStatus.textContent = "กำลังสร้าง...";
+  userCreateStatus.style.color = "var(--ink-dim)";
+  try {
+    const { response, payload } = await apiFetch("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify({
+        username: document.querySelector("#new-username").value.trim(),
+        password: document.querySelector("#new-password").value,
+        display_name: document.querySelector("#new-display-name").value.trim(),
+        role: document.querySelector("#new-role").value
+      })
+    });
+    if (!response.ok) throw new Error(payload.error || "Create failed");
+    userCreateStatus.textContent = `สร้าง user แล้ว: ${payload.user.username}`;
+    userCreateStatus.style.color = "var(--green)";
+    createUserForm.reset();
+    await loadUsers();
+  } catch (error) {
+    userCreateStatus.textContent = error.message;
+    userCreateStatus.style.color = "var(--red)";
+  }
+});
+
+reloadUsersBtn?.addEventListener("click", () => loadUsers());
 
 syncSession();

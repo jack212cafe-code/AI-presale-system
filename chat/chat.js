@@ -20,7 +20,11 @@ async function apiFetch(url, options = {}) {
     ...options,
     headers: { "Content-Type": "application/json", ...(options.headers || {}) }
   });
-  if (response.status === 401) { window.location.replace("/login"); return { response, payload: {} }; }
+  if (response.status === 401) {
+    alert("Session หมดอายุแล้ว กำลังนำไปหน้า login...");
+    window.location.replace("/login");
+    return { response, payload: {} };
+  }
   const payload = await response.json().catch(() => ({}));
   return { response, payload };
 }
@@ -70,10 +74,21 @@ function appendUserBubble(text) {
 function appendAssistantBubble(markdown, stage) {
   const msg = document.createElement("div");
   msg.className = "message";
-  msg.innerHTML = `
-    <div class="message-label">AI Presale Assistant</div>
-    <div class="bubble assistant">${renderMarkdown(markdown)}</div>
-  `;
+  const bubble = document.createElement("div");
+  bubble.className = "bubble assistant";
+  bubble.innerHTML = `<button class="copy-btn">คัดลอก</button>${renderMarkdown(markdown)}`;
+  const copyBtn = bubble.querySelector(".copy-btn");
+  copyBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(markdown).catch(() => {});
+    copyBtn.textContent = "✓ คัดลอกแล้ว";
+    copyBtn.classList.add("copied");
+    setTimeout(() => { copyBtn.textContent = "คัดลอก"; copyBtn.classList.remove("copied"); }, 2000);
+  });
+  const label = document.createElement("div");
+  label.className = "message-label";
+  label.textContent = "Franky-Presale";
+  msg.appendChild(label);
+  msg.appendChild(bubble);
   thread.appendChild(msg);
   if (stage === "awaiting_selection") appendSolutionCards(msg, markdown);
   scrollToBottom();
@@ -84,7 +99,7 @@ function appendErrorBubble(errorText) {
   const msg = document.createElement("div");
   msg.className = "message";
   msg.innerHTML = `
-    <div class="message-label">AI Presale Assistant</div>
+    <div class="message-label">Franky-Presale</div>
     <div class="bubble assistant error-bubble">
       <div style="margin-bottom:6px">${escapeHtml(errorText)}</div>
       <button class="retry-btn">↺ ลองอีกครั้ง</button>
@@ -98,37 +113,47 @@ function appendErrorBubble(errorText) {
   scrollToBottom();
 }
 
-const STAGES = [
-  "กำลังวิเคราะห์ความต้องการ...",
-  "กำลังออกแบบ solution...",
-  "ผู้เชี่ยวชาญกำลัง review...",
-  "กำลังสร้าง BOM...",
-  "กำลังเขียน proposal..."
-];
-
 function startLoadingBubble() {
   const msg = document.createElement("div");
   msg.className = "message";
   msg.id = "loading-bubble";
   msg.innerHTML = `
-    <div class="message-label">AI Presale Assistant</div>
+    <div class="message-label">Franky-Presale</div>
     <div class="bubble assistant">
-      <div class="typing-indicator">
-        <div class="typing-dots"><span></span><span></span><span></span></div>
-        <span class="stage-label">${STAGES[0]}</span>
+      <div class="skeleton">
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line medium"></div>
+        <div class="skeleton-line short"></div>
+      </div>
+      <div class="pipeline-progress">
+        <div class="pipeline-steps" id="pipeline-steps">
+          <div class="pipeline-step active" id="step-0"><span class="step-dot"></span></div>
+          <div class="pipeline-step" id="step-1"><span class="step-dot"></span></div>
+          <div class="pipeline-step" id="step-2"><span class="step-dot"></span></div>
+        </div>
+        <div class="pipeline-bar-track"><div class="pipeline-bar-fill" id="pipeline-bar-fill"></div></div>
+        <span class="stage-label" id="pipeline-stage-label">กำลังเริ่มต้น...</span>
       </div>
     </div>
   `;
   thread.appendChild(msg);
   scrollToBottom();
-  let idx = 0;
   loadingBubble = msg;
   setStage("processing");
-  loadingTimer = setInterval(() => {
-    idx = (idx + 1) % STAGES.length;
-    const label = msg.querySelector(".stage-label");
-    if (label) label.textContent = STAGES[idx];
-  }, 7000);
+}
+
+function updateLoadingProgress(step, total, label) {
+  if (!loadingBubble) return;
+  const fill = loadingBubble.querySelector("#pipeline-bar-fill");
+  const stageLabel = loadingBubble.querySelector("#pipeline-stage-label");
+  const steps = loadingBubble.querySelectorAll(".pipeline-step");
+  if (fill) fill.style.width = `${Math.round((step / total) * 100)}%`;
+  if (stageLabel) stageLabel.textContent = label;
+  steps.forEach((s, i) => {
+    s.classList.remove("active", "done");
+    if (i < step - 1) s.classList.add("done");
+    else if (i === step - 1) s.classList.add("active");
+  });
 }
 
 function stopLoadingBubble() {
@@ -145,24 +170,56 @@ async function sendMessage(text) {
   appendUserBubble(text.trim());
   promptBox.disabled = true;
   sendBtn.disabled = true;
+  sendBtn.classList.add("loading");
   startLoadingBubble();
   try {
-    const { response, payload } = await apiFetch("/api/chat", {
+    const response = await fetch("/api/chat", {
       method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text.trim(), conversation_id: activeConversationId })
     });
+    if (response.status === 401) { window.location.replace("/login"); return; }
+    if (response.status === 429) { stopLoadingBubble(); showError("ส่งข้อความถี่เกินไป — กรุณารอสักครู่แล้วลองใหม่"); setStage("ready"); return; }
+    if (!response.ok) { stopLoadingBubble(); showError("ไม่สามารถส่งข้อความได้"); setStage("ready"); return; }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let payload = null;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === "progress") {
+            updateLoadingProgress(event.step, event.total, event.label);
+          } else if (event.type === "done") {
+            payload = event;
+          }
+        } catch (e) { console.warn("[SSE parse]", e); }
+      }
+    }
+
     stopLoadingBubble();
+    if (!payload) { showError("ไม่ได้รับข้อมูลจาก server"); setStage("ready"); return; }
     if (payload.ok === false || payload.stage === "error") {
       appendErrorBubble(payload.error || payload.text || "เกิดข้อผิดพลาด กรุณาลองใหม่");
       setStage("ready");
       return;
     }
-    if (!response.ok) { showError(payload.error || "ไม่สามารถส่งข้อความได้"); setStage("ready"); return; }
     activeConversationId = payload.conversation_id;
     activeProjectId = payload.project_id;
     appendAssistantBubble(payload.text, payload.stage);
     setStage(payload.stage || "ready");
     if (payload.stage === "complete" && payload.project_id) {
+      if (payload.grounding_warnings > 0) appendGroundingBanner(payload.grounding_warnings);
       appendDownloadButton(payload.project_id);
     }
     if (payload.conversation_id) {
@@ -178,9 +235,31 @@ async function sendMessage(text) {
   } finally {
     promptBox.disabled = false;
     sendBtn.disabled = false;
+    sendBtn.classList.remove("loading");
     promptBox.focus();
   }
 }
+
+const hamburgerBtn = document.querySelector("#hamburger-btn");
+const sidebar = document.querySelector(".sidebar");
+const sidebarBackdrop = document.querySelector("#sidebar-backdrop");
+const logoutBtn = document.querySelector("#logout-btn");
+
+hamburgerBtn.addEventListener("click", () => {
+  sidebar.classList.toggle("open");
+  sidebarBackdrop.classList.toggle("visible");
+});
+sidebarBackdrop.addEventListener("click", () => {
+  sidebar.classList.remove("open");
+  sidebarBackdrop.classList.remove("visible");
+});
+
+logoutBtn.addEventListener("click", async () => {
+  if (confirm("ต้องการออกจากระบบหรือไม่?")) {
+    await apiFetch("/api/auth/logout", { method: "POST" });
+    window.location.replace("/login");
+  }
+});
 
 sendBtn.addEventListener("click", () => { sendMessage(promptBox.value); promptBox.value = ""; });
 promptBox.addEventListener("keydown", (e) => {
@@ -216,6 +295,43 @@ function appendSolutionCards(msgEl, markdownText) {
   msgEl.appendChild(strip);
 }
 
+function appendGroundingBanner(count) {
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.innerHTML = `
+    <div class="message-label">Franky-Presale</div>
+    <div class="grounding-banner">
+      <span>⚠️ พบ ${count} รายการที่ไม่มีใน KB — กรุณายืนยัน model number ก่อน quote</span>
+      <a href="/admin" target="_blank">+ Add to KB</a>
+    </div>
+  `;
+  thread.appendChild(msg);
+  scrollToBottom();
+}
+
+async function submitFeedback(projectId, rating, btn) {
+  try {
+    const { response, payload } = await apiFetch(`/api/projects/${projectId}/feedback`, {
+      method: "POST",
+      body: JSON.stringify({ rating })
+    });
+    if (response.ok) {
+      // Style buttons based on rating
+      const wrap = btn.closest(".rating-wrap");
+      const buttons = wrap.querySelectorAll(".rating-btn");
+      buttons.forEach(b => {
+        b.disabled = true;
+        if (b.dataset.rating === "1" && rating === 1) b.classList.add("active-up");
+        if (b.dataset.rating === "-1" && rating === -1) b.classList.add("active-down");
+      });
+    } else {
+      alert("ไม่สามารถบันทึก Rating ได้");
+    }
+  } catch (e) {
+    console.error("[feedback]", e);
+  }
+}
+
 function appendDownloadButton(projectId) {
   const msg = document.createElement("div");
   msg.className = "message";
@@ -228,24 +344,54 @@ function appendDownloadButton(projectId) {
     </div>
   `;
   msg.innerHTML = `
-    <div class="message-label">AI Presale Assistant</div>
+    <div class="message-label">Franky-Presale</div>
     <div class="bubble assistant">
-      <a href="/api/proposals/${encodeURIComponent(projectId)}/download" download class="download-btn">
+      <button class="download-btn" onclick="downloadProposal('${encodeURIComponent(projectId)}', this)">
         <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-        ดาวน์โหลด Proposal (.docx)
-      </a>
+        ดาวน์โหลด Proposal (.docx) — พร้อมส่งลูกค้า
+      </button>
+      <div class="rating-wrap">
+        <span class="rating-label">ประเมินคุณภาพ:</span>
+        <button class="rating-btn" data-rating="1" title="ดีมาก">👍</button>
+        <button class="rating-btn" data-rating="-1" title="ต้องปรับปรุง">👎</button>
+      </div>
       ${revisionStrip}
     </div>
   `;
   msg.querySelectorAll(".revision-chip").forEach(chip => {
     chip.addEventListener("click", () => {
-      const action = chip.dataset.action;
-      promptBox.value = action;
-      promptBox.focus();
+      sendMessage(chip.dataset.action);
     });
   });
+
+  // Feedback buttons logic
+  msg.querySelectorAll(".rating-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      submitFeedback(projectId, parseInt(btn.dataset.rating), btn);
+    });
+  });
+
   thread.appendChild(msg);
   scrollToBottom();
+}
+
+async function downloadProposal(projectId, btn) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "กำลังโหลด...";
+  try {
+    const response = await fetch(`/api/proposals/${projectId}/download`, { credentials: "include" });
+    if (response.status === 404) { alert("ไม่พบไฟล์ proposal — กรุณา generate ใหม่อีกครั้ง"); return; }
+    if (!response.ok) { alert("เกิดข้อผิดพลาดในการดาวน์โหลด"); return; }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `proposal_${projectId}.docx`; a.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
 }
 
 async function loadProjects() {
@@ -314,6 +460,128 @@ newChatBtn.addEventListener("click", () => {
   showEmptyState();
   document.querySelectorAll(".project-item").forEach(el => el.classList.remove("active"));
   promptBox.focus();
+});
+
+// ── TOR Mode ────────────────────────────────────────────────────────────────
+const torToggleBtn = document.querySelector("#tor-toggle-btn");
+const torPanel = document.querySelector("#tor-panel");
+const torTextarea = document.querySelector("#tor-textarea");
+const torSubmitBtn = document.querySelector("#tor-submit-btn");
+
+torToggleBtn.addEventListener("click", () => {
+  torToggleBtn.classList.toggle("active");
+  torPanel.classList.toggle("visible");
+  if (torPanel.classList.contains("visible")) torTextarea.focus();
+});
+
+function renderTorTable(report) {
+  const STATUS = { pass: ["status-pass", "ผ่าน ✓"], review: ["status-review", "⚠ ตรวจสอบ"], fail: ["status-fail", "ไม่ผ่าน ✗"], kb_insufficient: ["status-kb", "KB ไม่เพียงพอ"] };
+  const OVERALL = { comply: "✅ ผ่านทุกข้อ", comply_with_review: "⚠️ ผ่าน (มีรายการต้องตรวจสอบ)", non_comply: "❌ ไม่ผ่าน", kb_insufficient: "⬜ KB ไม่เพียงพอ" };
+
+  let html = `<div class="tor-result-wrap">
+<strong>${escapeHtml(report.project_name)}</strong> — ผลตรวจสอบ ${report.items.length} รายการ<br><br>
+<table class="tor-table">
+<thead><tr><th>#</th><th>รายการ</th><th>จำนวน</th><th>รุ่นที่แนะนำ</th><th>คุณสมบัติ</th><th>ข้อกำหนด TOR</th><th>ค่าสินค้า</th><th>ผล</th><th>สถานะ</th></tr></thead><tbody>`;
+
+  for (const item of report.items) {
+    const checks = item.compliance_checks ?? [];
+    const overallLabel = OVERALL[item.overall_status] ?? item.overall_status;
+    const rowspan = Math.max(checks.length, 1);
+    checks.forEach((c, i) => {
+      const [cls, label] = STATUS[c.status] ?? ["", c.status];
+      html += `<tr>`;
+      if (i === 0) {
+        html += `<td rowspan="${rowspan}">${escapeHtml(item.item_no)}</td>
+<td rowspan="${rowspan}">${escapeHtml(item.category)}</td>
+<td rowspan="${rowspan}" style="text-align:center">${item.quantity}</td>
+<td rowspan="${rowspan}"><strong>${escapeHtml(item.recommended_model)}</strong><br><span style="font-size:11px;color:var(--ink-faint)">${escapeHtml(item.model_spec_summary)}</span></td>`;
+      }
+      html += `<td>${escapeHtml(c.spec_label)}</td><td>${escapeHtml(c.tor_requirement)}</td><td>${escapeHtml(c.product_value)}</td><td class="${cls}">${label}${c.note ? `<br><span style="font-size:11px;font-weight:400">${escapeHtml(c.note)}</span>` : ""}</td>`;
+      if (i === 0) html += `<td rowspan="${rowspan}">${overallLabel}</td>`;
+      html += `</tr>`;
+    });
+    if (checks.length === 0) {
+      html += `<tr><td>${escapeHtml(item.item_no)}</td><td>${escapeHtml(item.category)}</td><td>${item.quantity}</td><td>${escapeHtml(item.recommended_model)}</td><td colspan="3" style="color:var(--ink-faint)">—</td><td>${overallLabel}</td></tr>`;
+    }
+  }
+  html += `</tbody></table></div>`;
+
+  const reviewItems = report.items.filter(i => i.presale_review_notes?.length);
+  if (reviewItems.length) {
+    html += `<br><strong>⚠️ รายการที่ต้องตรวจสอบก่อน bid:</strong><ul style="margin:6px 0 0 16px;font-size:13px">`;
+    reviewItems.forEach(item => item.presale_review_notes.forEach(n => { html += `<li>${escapeHtml(n)}</li>`; }));
+    html += `</ul>`;
+  }
+  return html;
+}
+
+torSubmitBtn.addEventListener("click", async () => {
+  const torText = torTextarea.value.trim();
+  if (!torText) return;
+  torSubmitBtn.disabled = true;
+  torPanel.classList.remove("visible");
+  torToggleBtn.classList.remove("active");
+
+  const es = document.querySelector("#empty-state");
+  if (es) es.remove();
+
+  // Show user bubble
+  const preview = torText.slice(0, 120) + (torText.length > 120 ? "..." : "");
+  appendUserBubble(`[TOR Compliance]\n${preview}`);
+  startLoadingBubble();
+  setStage("processing");
+
+  try {
+    const response = await fetch("/api/tor", {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tor_text: torText })
+    });
+    if (response.status === 401) { window.location.replace("/login"); return; }
+    if (response.status === 429) { stopLoadingBubble(); appendErrorBubble("ส่งข้อความถี่เกินไป — กรุณารอสักครู่แล้วลองใหม่"); setStage("ready"); return; }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "", payload = null;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n"); buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === "progress") updateLoadingProgress(event.step, event.total, event.label);
+          else if (event.type === "done") payload = event;
+        } catch (e) { console.warn("[SSE parse]", e); }
+      }
+    }
+    stopLoadingBubble();
+
+    if (!payload?.ok) { appendErrorBubble(payload?.error || "เกิดข้อผิดพลาด"); setStage("ready"); return; }
+
+    const report = payload.report;
+    const msg = document.createElement("div");
+    msg.className = "message";
+    msg.innerHTML = `<div class="message-label">Franky-Presale — TOR Compliance</div><div class="bubble assistant">${renderTorTable(report)}<br><a href="/api/tor/${encodeURIComponent(report.tor_id)}/export" download class="download-btn" style="margin-top:8px"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Export Excel (.csv)</a></div>`;
+    thread.appendChild(msg);
+    scrollToBottom();
+    setStage("ready");
+    torTextarea.value = "";
+  } catch (err) {
+    stopLoadingBubble();
+    console.error("[TOR]", err);
+    const msg = document.createElement("div");
+    msg.className = "message";
+    msg.innerHTML = `<div class="message-label">Franky-Presale</div><div class="bubble assistant error-bubble">ไม่สามารถตรวจสอบ TOR ได้ — กรุณาลองใหม่<br><button class="retry-btn">↺ ลองอีกครั้ง</button></div>`;
+    msg.querySelector(".retry-btn").addEventListener("click", () => { msg.remove(); torSubmitBtn.click(); });
+    thread.appendChild(msg);
+    scrollToBottom();
+    setStage("ready");
+  } finally {
+    torSubmitBtn.disabled = false;
+  }
 });
 
 async function syncSession() {

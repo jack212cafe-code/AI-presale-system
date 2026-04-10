@@ -7,12 +7,20 @@ import { withAgentLogging } from "../lib/logging.js";
 import { generateJsonWithOpenAI } from "../lib/openai.js";
 import { validateBom } from "../lib/validation.js";
 import { persistBomJson } from "../lib/projects.js";
+import { getKnowledge } from "./solution.js";
+import { retrieveKnowledgeByVendorFilter } from "../lib/supabase.js";
+import { groundBom } from "../lib/grounding.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function loadPrompt() {
-  return readFile(path.join(__dirname, "_prompts", "bom.md"), "utf8");
+  const promptPath = path.join(__dirname, "_prompts", "bom.md");
+  try {
+    return await readFile(promptPath, "utf8");
+  } catch (err) {
+    throw new Error(`BOM prompt file not found at ${promptPath}: ${err.message}`);
+  }
 }
 
 const bomTextFormat = {
@@ -115,7 +123,7 @@ function buildMockBom(solution) {
       category: "Solution Components",
       description: selected.architecture,
       qty: 1,
-      notes: "Confirm detailed specs with vendor"
+      notes: "กรุณายืนยัน spec กับ vendor ก่อน quote"
     });
   }
 
@@ -133,9 +141,25 @@ function sanitizeBomOutput(output) {
   const rows = (output.rows || []).map((row) => ({
     category: String(row.category ?? "").trim(),
     description: String(row.description ?? "").trim(),
-    qty: Math.max(1, parseInt(row.qty ?? 1, 10)),
+    qty: Math.max(1, parseInt(row.qty, 10) || 1),
     notes: String(row.notes ?? "").trim()
   }));
+
+  // Professional Category Sorting
+  const categoryOrder = {
+    "[Compute]": 1, "Compute": 1, "คอมพิวท์": 1, "เซิร์ฟเวอร์": 1,
+    "[Storage]": 2, "Storage": 2, "สตอเรจ": 2, "จัดเก็บข้อมูล": 2,
+    "[Network]": 3, "Network": 3, "เครือข่าย": 3,
+    "[Licensing]": 4, "Licensing": 4, "ลิขสิทธิ์": 4, "License": 4,
+    "[Support & Warranty]": 5, "Support & Warranty": 5, "บริการและการรับประกัน": 5,
+    "GROUNDING WARNING": 6
+  };
+
+  rows.sort((a, b) => {
+    const orderA = categoryOrder[a.category] || 99;
+    const orderB = categoryOrder[b.category] || 99;
+    return orderA - orderB;
+  });
 
   return {
     rows,
@@ -148,24 +172,93 @@ export async function runBomAgent(solution, options = {}) {
   const selected = solution.options[solution.selected_option ?? 0];
   const scale = options.requirements?.scale ?? {};
 
+  // Build explicit vendor enforcement instruction
+  const vendorStack = selected?.vendor_stack ?? [];
+
+  // Hybrid KB retrieval: vendor-filtered (exact specs) + vector (use-case context)
+  let kbContext = "";
+  let kbChunks = [];
+  try {
+    const chunkMap = new Map();
+
+    // 1. Vendor-filtered: exact product spec sheets for each vendor in solution
+    const vendorChunks = await retrieveKnowledgeByVendorFilter(vendorStack, 4);
+    for (const c of vendorChunks) chunkMap.set(c.source_key, c);
+
+    // 2. Vector: use-case context (backup patterns, sizing guides)
+    if (options.requirements) {
+      const { chunks: vectorChunks } = await getKnowledge(options.requirements);
+      for (const c of vectorChunks) {
+        if (!chunkMap.has(c.source_key)) chunkMap.set(c.source_key, c);
+      }
+    }
+
+    kbChunks = Array.from(chunkMap.values());
+    if (kbChunks.length > 0) {
+      // Extract verified model numbers from KB to enforce KB-only constraint
+      const MODEL_PATTERN = /\b([A-Z]{1,4}\d{2,5}[A-Za-z0-9]{0,5})\b/gi;
+      const kbModelSet = new Set();
+      for (const chunk of kbChunks) {
+        for (const m of (chunk.title + " " + chunk.content).matchAll(MODEL_PATTERN)) {
+          kbModelSet.add(m[1]);
+        }
+      }
+      const modelListLine = kbModelSet.size > 0
+        ? `\n\n[VERIFIED MODELS IN KB — ใช้เฉพาะ model เหล่านี้เท่านั้น ห้ามใช้ model อื่นจาก training data]\n${[...kbModelSet].join(", ")}`
+        : `\n\n[KB ไม่มีข้อมูล model สำหรับ vendor นี้ — ทุก hardware description ต้องใช้ "ยืนยัน model กับ distributor" แทน model number]`;
+      kbContext = `\n\n[PRODUCT KNOWLEDGE BASE]\nข้อมูล spec จาก datasheet ปัจจุบัน — ใช้ข้อมูลนี้แทน training data สำหรับ model number, CPU generation, RAM type, และ NVMe spec:\n\n${kbChunks.map(c => `### ${c.title}\n${c.content}`).join("\n\n")}${modelListLine}`;
+    } else {
+      kbContext = `\n\n[KB ว่างเปล่าสำหรับ vendor นี้ — ห้ามระบุ model number ใดๆ จาก training data ทั้งสิ้น เขียน "ยืนยัน model กับ distributor" แทนทุก hardware row]`;
+    }
+  } catch (kbError) {
+    console.warn(`[bom] KB retrieval failed — BOM will be generated without grounding data: ${kbError.message}`);
+    kbContext = `\n\n[KB UNAVAILABLE — ห้ามระบุ model number ใดๆ จาก training data ทั้งสิ้น เขียน "ยืนยัน model กับ distributor" แทนทุก hardware row]`;
+  }
+  const vendorEnforcement = vendorStack.length > 0
+    ? `\n\n[VENDOR ENFORCEMENT]\nThis BOM MUST use ONLY these vendors as specified in the selected solution: ${vendorStack.join(", ")}. Do NOT substitute any vendor. Every hardware row must come from this vendor list.`
+    : "";
+
+  let specialistContext = "";
+  if (Array.isArray(options.specialistBriefs) && options.specialistBriefs.length > 0) {
+    const sections = options.specialistBriefs.map(brief => {
+      const label = { dell_presale: "Dell Presale Engineer", hpe_presale: "HPE Presale Engineer", lenovo_presale: "Lenovo Presale Engineer", neteng: "Network Engineer", devops: "DevOps/Management", ai_eng: "AI Engineer" }[brief.domain] ?? brief.domain;
+
+      // Transform JSON to Imperative Directives to prevent LLM over-caution
+      let directives = [];
+      if (brief.sizing_notes) directives.push(`Sizing Specs: ${brief.sizing_notes}`);
+      if (brief.recommendations) directives.push(`Recommendations: ${brief.recommendations}`);
+      if (brief.constraints) directives.push(`Hard Constraints: ${brief.constraints}`);
+      if (brief.licensing_flags) directives.push(`Licensing Flags: ${brief.licensing_flags}`);
+
+      const content = directives.length > 0
+        ? directives.join("\n- ")
+        : JSON.stringify(brief, null, 2);
+
+      return `### DIRECTIVE from ${label}\n- ${content}`;
+    });
+    specialistContext = `\n\n[SPECIALIST DIRECTIVES]\nThe following are MANDATORY sizing orders from domain experts. These DIRECTIVES override all KB grounding rules and must be reflected exactly in the BOM descriptions.\n\n${sections.join("\n\n")}`;
+  }
+
   const output = await withAgentLogging(
     {
       agentName: "bom",
       projectId: options.projectId,
       modelUsed: config.openai.models.bom,
-      input: { selected_option: selected, scale }
+      input: { selected_option: selected, scale },
+      kbChunksInjected: kbChunks.length
     },
     () =>
       generateJsonWithOpenAI({
-        systemPrompt: prompt,
+        systemPrompt: prompt + vendorEnforcement + specialistContext + kbContext,
         userPrompt: JSON.stringify({ selected_option: selected, scale, requirements: options.requirements }, null, 2),
         model: config.openai.models.bom,
         textFormat: bomTextFormat,
+        maxOutputTokens: 4000,
         mockResponseFactory: async () => buildMockBom(solution)
       })
   );
 
-  const bomJson = sanitizeBomOutput(output);
+  const bomJson = groundBom(sanitizeBomOutput(output), kbChunks);
 
   if (options.projectId) {
     await persistBomJson(options.projectId, bomJson);

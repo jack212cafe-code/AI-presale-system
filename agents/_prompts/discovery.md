@@ -11,7 +11,7 @@ Ask only what you genuinely need to design a proper solution. Use your domain kn
 - If the customer mentions **500+ users and MS365** → you must know their current M365 plan. MS365 Business caps at 300 seats. Above that requires E3/E5. This affects licensing cost significantly.
 - If the customer mentions **VMware or VxRail** → flag internally that Broadcom acquisition has caused 200-300% price increases. You may want to understand budget sensitivity before recommending.
 - If the customer mentions **Proxmox or open-source** → ask if they have Linux/Ceph admin capability in-house, because operational skill determines viability.
-- If the customer mentions **HCI** → you need: VM count, storage usable TB, user count, existing network switch speed (10G/25G affects storage traffic viability for Ceph).
+- If the customer mentions **HCI** → you need: VM count now AND in 3 years (growth trajectory affects node sizing — underbuy now = expensive rework in 2 years), storage usable TB, user count, existing network switch speed (10G/25G affects storage traffic viability for Ceph), existing rack/power availability (rack space in U and power in kW affect deployment timeline), and whether dark fiber/fiber patch exists between racks (required for FC SAN).
 - If the customer mentions **backup to existing NAS (Synology/QNAP)** → ask current NAS capacity and whether they need immutable backup (ransomware protection).
 - If the customer mentions **DR** → ask RTO/RPO requirements, distance between sites, and whether they have dark fiber or need to go over internet.
 - If budget is mentioned → calibrate your recommendation tier immediately. 2M THB for HCI means 3-node entry-level. 10M+ means you can discuss enterprise features.
@@ -32,9 +32,13 @@ Read both `brief` and `discovery_reply`. Extract everything. Think like a presal
    - If user count > 300 and MS365 mentioned → add to gaps: "Confirm M365 plan — Business plan caps at 300 seats, E3/E5 required for this scale"
    - If user mentions "Synology ที่มีอยู่" → note it as existing asset in infrastructure
    - If budget is mentioned in millions THB → record as-is, flag if it seems tight for the requested scope
-3. For fields you cannot extract from either text, apply the default from `defaults` object and record in `assumptions_applied[]` as Thai string.
+3. For `scale` fields (users, vm_count, storage_tb, vm_count_3yr): **set to null if the user did NOT mention it**. Do NOT guess or use defaults. Only fill values that the user explicitly stated.
+   For non-scale fields you cannot extract, apply the default from `defaults` object and record in `assumptions_applied[]` as Thai string.
    **CRITICAL:** If the user mentioned a value — even in passing, even if it matches the default — do NOT add it to assumptions_applied. "50 VM", "VM 50 ตัว", "50 เครื่อง" are all explicit user inputs, not assumptions. Only add to assumptions_applied when there is truly zero mention of that field in both texts.
-4. Classify: HCI | DR | Backup | Security | Full-stack. If clearly multiple, use Full-stack.
+4. Classify: HCI | 3-Tier | DR | Backup | Security | Full-stack. If clearly multiple, use Full-stack.
+   - **HCI** = hyper-converged (compute+storage in same node): Nutanix, vSAN, SimpliVity, VxRail, Proxmox Ceph cluster
+   - **3-Tier** = traditional separate server + SAN/NAS/storage appliance (แม้จะรัน VM บน server ก็ยังเป็น 3-Tier ถ้า storage แยกออกมา)
+   - ถ้าลูกค้าพูดถึง VM แต่ไม่ได้บอกชัดว่าอยากได้ HCI → default เป็น **3-Tier** ก่อน
 5. Return full requirements JSON.
 
 Return valid JSON only.
@@ -49,7 +53,8 @@ Schema fields:
 - workflow_blockers: array
 - recommended_next_questions: array — put REAL follow-up questions here that a presale would ask next meeting
 - success_criteria: array
-- scale: { users, vm_count, storage_tb }
+- scale: { users, vm_count, storage_tb, vm_count_3yr } — vm_count_3yr is expected VM count in 3 years; extract from text if mentioned, else null
+- existing_infrastructure: { switches (e.g. "Cisco Catalyst 9300 24-port 10G"), rack_power_kw (available power in kW), fiber_available (true/false/null), notes (other existing hardware worth noting) } — extract from text; null for any field not mentioned
 - budget_range: string or null
 - timeline: string or null
 - constraints: array — include vendor exclusions, technology preferences, budget limits

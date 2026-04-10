@@ -127,9 +127,9 @@ Plans:
 
 ### Phases
 
-- [ ] **Phase 7: Discovery Agent + Classifier** - Insert discovery dialog and request classifier before solution generation
+- [x] **Phase 7: Discovery Agent + Classifier** - Insert discovery dialog and request classifier before solution generation
 - [ ] **Phase 7.1: Solution & BOM Accuracy** - Fix technical accuracy errors in solution/BOM agents (licensing rules, storage sizing, architecture decisions)
-- [ ] **Phase 8: Customer Memory** - Persist cross-session customer context, vendor preferences, and project history
+- [x] **Phase 8: Customer Memory** - Persist cross-session customer context, vendor preferences, and project history
 - [ ] **Phase 9: Enriched Handoff Artifact** - Expand proposal with risks, missing info, next steps, and options considered
 - [ ] **Phase 10: Feedback Loop + UX Fixes** - Capture engineer feedback and fix chat UX gaps from UAT
 
