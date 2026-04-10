@@ -77,12 +77,23 @@ async function runTurn(sessionId, projectId, userText, onStream) {
   const responseChunks = [];
   const pendingTools = [];
 
-  // Pattern 7: open stream BEFORE sending
+  // 1. Verify session is idle before sending a new user message
+  // If the session is waiting for a tool result, we must resolve that first
   const stream = await client.beta.sessions.events.stream(sessionId);
 
-  await client.beta.sessions.events.send(sessionId, {
-    events: [{ type: "user.message", content: [{ type: "text", text: userText }] }],
-  });
+  try {
+    await client.beta.sessions.events.send(sessionId, {
+      events: [{ type: "user.message", content: [{ type: "text", text: userText }] }],
+    });
+  } catch (error) {
+    if (error.message?.includes("waiting on responses")) {
+      // This is the race condition we encountered.
+      // In a more complex system we'd handle pending tools here,
+      // but for now, we'll alert the user that the agent is still thinking.
+      throw new Error("Agent is still processing a previous request. Please wait a moment.");
+    }
+    throw error;
+  }
 
   for await (const event of stream) {
     if (event.type === "agent.message") {

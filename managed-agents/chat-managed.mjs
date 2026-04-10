@@ -49,7 +49,15 @@ export async function handleChatMessage({ conversationId, message, userId, onPro
   await addMessage(conversationId, "user", message);
   onProgress?.(2, 2, "Agent thinking...");
 
-  const { text } = await chat(projectId, message);
+  let fullText = "";
+  await chat(projectId, message, (chunk) => {
+    fullText += chunk;
+    onProgress?.(2, 2, `Agent is typing... ${fullText.slice(-20)}...`);
+    // We can't send the final text via onProgress easily without a custom event type,
+    // but we ensure the connection stays alive.
+  });
+
+  const text = fullText;
 
   await addMessage(conversationId, "assistant", text);
 
