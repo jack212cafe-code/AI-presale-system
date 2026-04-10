@@ -109,21 +109,14 @@ async function extractTextFromFile(absolutePath) {
   }
 
   if (extension === ".pdf") {
-    const pdfParseModule = getDependency("pdf-parse");
-    const PDFParse = pdfParseModule.PDFParse || pdfParseModule.default?.PDFParse || pdfParseModule.default;
+    const pdfParse = getDependency("pdf-parse");
     const buffer = await readFile(absolutePath);
-    if (typeof PDFParse !== "function") {
-      throw new Error("Installed pdf-parse package does not expose a usable PDFParse constructor");
-    }
 
-    const parser = new PDFParse({ data: buffer });
     try {
-      const result = await parser.getText();
+      const result = await pdfParse(buffer);
       return cleanText(result.text);
-    } finally {
-      if (typeof parser.destroy === "function") {
-        await parser.destroy();
-      }
+    } catch (error) {
+      throw new Error(`PDF parsing failed for ${absolutePath}: ${error.message}`);
     }
   }
 
