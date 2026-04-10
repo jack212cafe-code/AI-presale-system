@@ -96,6 +96,8 @@ async function runTurn(sessionId, projectId, userText, onStream) {
   }
 
   for await (const event of stream) {
+    console.log(`[Agent Event] type: ${event.type}`, event);
+
     if (event.type === "agent.message") {
       for (const block of event.content) {
         if (block.type === "text") {
@@ -104,6 +106,7 @@ async function runTurn(sessionId, projectId, userText, onStream) {
         }
       }
     } else if (event.type === "agent.custom_tool_use") {
+      console.log(`[Agent Tool] Calling: ${event.tool_name} with input:`, event.input);
       pendingTools.push({
         id: event.id,
         name: event.tool_name,
@@ -111,9 +114,11 @@ async function runTurn(sessionId, projectId, userText, onStream) {
       });
     } else if (event.type === "session.status_idle") {
       if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
+        console.log(`[Agent Action] Resolving ${pendingTools.length} pending tools...`);
         const results = await Promise.all(
           pendingTools.map(async (tool) => {
             const result = await handleToolCall(tool.name, tool.input);
+            console.log(`[Tool Result] ${tool.name} returned:`, result);
             return {
               type: "user.custom_tool_result",
               custom_tool_use_id: tool.id,
