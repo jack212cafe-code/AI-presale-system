@@ -39,7 +39,7 @@ import { runAllSpecialists } from "./agents/specialist.js";
 import { runBomAgent } from "./agents/bom.js";
 import { runProposalAgent } from "./agents/proposal.js";
 import { checkBudgetOverrun } from "./lib/budget.js";
-import { handleChatMessage, withTimeout } from "./lib/chat.js";
+import { handleChatMessage, withTimeout } from "./managed-agents/chat-managed.mjs";
 import { runTorPipeline } from "./agents/tor.js";
 import { generateTorComplianceCsv, getTorExportFilename } from "./lib/tor-export.js";
 import { getMessagesByConversation, getConversationsByProject } from "./lib/conversations.js";
@@ -154,6 +154,7 @@ function startKnowledgeImportJob(jobId, sourceFile) {
 
 export async function appHandler(request, response) {
   const url = new URL(request.url ?? "/", config.publicBaseUrl);
+  console.log(`[req] ${request.method} ${url.pathname}`);
 
   if (request.method === "GET" && url.pathname === "/health") {
     const PROBE_TIMEOUT_MS = 3000;

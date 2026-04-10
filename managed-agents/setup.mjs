@@ -1,0 +1,164 @@
+/**
+ * ONE-TIME SETUP — run once, save the IDs to .env.managed-agents
+ *
+ *   node managed-agents/setup.mjs
+ *
+ * Then add MANAGED_AGENT_ENV_ID and MANAGED_AGENT_ID to your .env
+ */
+
+import Anthropic from "@anthropic-ai/sdk";
+import { readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { config } from "dotenv";
+
+config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(__dirname, "..");
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// Load all existing agent prompts
+const [discovery, solution, bom, proposal] = await Promise.all([
+  readFile(path.join(root, "agents/_prompts/discovery.md"), "utf-8"),
+  readFile(path.join(root, "agents/_prompts/solution.md"), "utf-8"),
+  readFile(path.join(root, "agents/_prompts/bom.md"), "utf-8"),
+  readFile(path.join(root, "agents/_prompts/proposal.md"), "utf-8"),
+]);
+
+const systemPrompt = `You are an AI presale specialist for IT infrastructure at a Thai IT distributor.
+You manage the complete presale pipeline for a project from customer brief through proposal generation.
+
+Each project has a project_id. Always use it when calling save_project or get_project.
+
+## Pipeline Stages
+
+Run stages in order. Do NOT skip stages.
+
+### STAGE 1 — Discovery Questions
+${discovery}
+
+### STAGE 2 — Solution Design
+${solution}
+
+### STAGE 3 — BOM Generation
+${bom}
+
+### STAGE 4 — Proposal Writing
+${proposal}
+
+## Tool Usage Rules
+
+**search_knowledge_base**: Call this BEFORE designing solutions. Search once per use_case (e.g. HCI, Backup, DR). Use KB results as ground truth for hardware specs and pricing.
+
+**save_project**: Call after completing each stage with the full structured JSON output. This is mandatory — do not skip.
+
+**get_project**: Call at session start when resuming a project to load existing state.
+
+## Pipeline Orchestration
+
+When user provides a new brief (stage = new project):
+1. Call get_project to check existing state
+2. If no requirements yet: run Stage 1 → return discovery question paragraph
+3. After user replies to questions: parse answers → call search_knowledge_base for each use_case → run Stage 2 → call save_project(stage: "requirements") + save_project(stage: "solution")
+4. When user selects a solution option: run Stage 3 → run Stage 4 → call save_project(stage: "bom") + save_project(stage: "proposal")
+
+Never re-run a completed stage unless the user explicitly asks to revise.
+`;
+
+// 1. Create environment (shared across all presale projects)
+console.log("Creating environment...");
+const env = await client.beta.environments.create({
+  name: "presale-pipeline-env",
+  config: {
+    type: "cloud",
+    networking: { type: "unrestricted" }, // needs to reach Supabase
+  },
+});
+console.log(`  env: ${env.id}`);
+
+// 2. Create agent (versioned, reused for every session)
+console.log("Creating agent...");
+const agent = await client.beta.agents.create({
+  name: "AI Presale Agent",
+  model: "claude-sonnet-4-6",
+  system: systemPrompt,
+  tools: [
+    {
+      type: "agent_toolset_20260401",
+      default_config: { enabled: true },
+      configs: [
+        { name: "bash", enabled: false }, // disable shell in presale context
+      ],
+    },
+    {
+      type: "custom",
+      name: "search_knowledge_base",
+      description:
+        "Search the internal product knowledge base for vendor specs, sizing, and pricing.",
+      input_schema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "Search query e.g. 'Dell PowerEdge R760 specs', 'Nutanix NX pricing Thailand'",
+          },
+          use_case: {
+            type: "string",
+            description:
+              "Use case: HCI | 3-Tier | Backup | DR | Security | Full-stack",
+          },
+        },
+        required: ["query", "use_case"],
+      },
+    },
+    {
+      type: "custom",
+      name: "save_project",
+      description: "Persist structured pipeline output to the project record.",
+      input_schema: {
+        type: "object",
+        properties: {
+          project_id: { type: "string" },
+          stage: {
+            type: "string",
+            enum: ["requirements", "solution", "bom", "proposal"],
+          },
+          data: {
+            type: "object",
+            description: "Full structured JSON from the completed stage",
+          },
+        },
+        required: ["project_id", "stage", "data"],
+      },
+    },
+    {
+      type: "custom",
+      name: "get_project",
+      description: "Load existing project state to resume work.",
+      input_schema: {
+        type: "object",
+        properties: {
+          project_id: { type: "string" },
+        },
+        required: ["project_id"],
+      },
+    },
+  ],
+});
+console.log(`  agent: ${agent.id} (v${agent.version})`);
+
+// 3. Save IDs
+const out = `# Managed Agents — generated by setup.mjs on ${new Date().toISOString()}
+# DO NOT regenerate these unless you intentionally want a new agent.
+# To update the agent prompt: node managed-agents/update-agent.mjs
+MANAGED_AGENT_ENV_ID=${env.id}
+MANAGED_AGENT_ID=${agent.id}
+MANAGED_AGENT_VERSION=${agent.version}
+`;
+
+await writeFile(path.join(__dirname, ".env.managed-agents"), out);
+console.log(`\nSaved to managed-agents/.env.managed-agents`);
+console.log("Add MANAGED_AGENT_ENV_ID and MANAGED_AGENT_ID to your main .env");

@@ -17,6 +17,7 @@
     "smoke": "node scripts/smoke.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.87.0",
     "@supabase/supabase-js": "^2.57.4",
     "bcryptjs": "^2.4.3",
     "docx": "^9.5.1",
