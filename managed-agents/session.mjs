@@ -78,9 +78,10 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
   const responseChunks = [];
   const startMs = Date.now();
 
-  // Track processed event IDs to deduplicate across stream reconnects
+  // Track across stream reconnects
   const seenEventIds = new Set();
-  const resolvedToolIds = new Set();
+  // Store resolved tool results keyed by event ID for re-submission
+  const toolResultStore = new Map(); // eventId → result event object
 
   try {
     await client.beta.sessions.events.send(sessionId, {
@@ -93,14 +94,13 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
     throw error;
   }
 
-  // Stream loop: reopen after each tool-result batch (stream closes after session.status_idle)
+  // Stream loop: API processes ONE tool result per cycle, so reopen after each submit
   let finalDone = false;
   while (!finalDone) {
     const pendingTools = [];
     const stream = await client.beta.sessions.events.stream(sessionId);
 
     for await (const event of stream) {
-      // Skip already-processed events (stream may replay history on reconnect)
       if (event.id && seenEventIds.has(event.id)) continue;
       if (event.id) seenEventIds.add(event.id);
 
@@ -116,33 +116,42 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
       } else if (event.type === "agent.thinking") {
         onStream?.(JSON.stringify({ type: "agent.thinking" }));
       } else if (event.type === "agent.custom_tool_use") {
-        if (!resolvedToolIds.has(event.id)) {
+        if (!toolResultStore.has(event.id)) {
           const toolName = event.tool_name || event.name;
           onStream?.(JSON.stringify({ type: "agent.custom_tool_use", tool_name: toolName }));
           console.log(`[Agent Tool] Calling: ${toolName}`);
           pendingTools.push({ id: event.id, name: toolName, input: event.input });
         }
       } else if (event.type === "session.status_idle") {
-        if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
-          console.log(`[Agent Action] Resolving ${pendingTools.length} tools in one batch...`);
-          // Execute all tool calls in parallel, then submit ALL results in ONE batch
-          const results = await Promise.all(
+        const requiredIds = event.stop_reason?.event_ids || [];
+
+        // Execute NEW tool calls (parallel) and store results
+        if (pendingTools.length > 0) {
+          console.log(`[Agent Action] Executing ${pendingTools.length} tools...`);
+          await Promise.all(
             pendingTools.map(async (tool) => {
-              resolvedToolIds.add(tool.id);
               const result = await handleToolCall(tool.name, tool.input);
               console.log(`[Tool Result] ${tool.name} done`);
-              return {
+              toolResultStore.set(tool.id, {
                 type: "user.custom_tool_result",
                 custom_tool_use_id: tool.id,
                 content: [{ type: "text", text: JSON.stringify(result) }],
-              };
+              });
             })
           );
-          await client.beta.sessions.events.send(sessionId, { events: results });
-          // Stream closed after idle — break inner loop, while reopens
-          break;
         }
-        // No pending tools → agent truly done
+
+        // Submit ONE stored result that the API still requires
+        const nextToSubmit = requiredIds.find((id) => toolResultStore.has(id));
+        if (nextToSubmit) {
+          const resultEvent = toolResultStore.get(nextToSubmit);
+          toolResultStore.delete(nextToSubmit);
+          console.log(`[Agent Submit] Sending result for ${nextToSubmit}`);
+          await client.beta.sessions.events.send(sessionId, { events: [resultEvent] });
+          break; // reopen stream for next cycle
+        }
+
+        // No more tools needed → done
         finalDone = true;
         break;
       } else if (event.type === "session.status_terminated") {
@@ -151,8 +160,7 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
       }
     }
 
-    // Safety: if stream ended with no tools and no finalDone signal
-    if (!finalDone && pendingTools.length === 0) finalDone = true;
+    if (!finalDone && toolResultStore.size === 0) finalDone = true;
   }
 
   const text = responseChunks.join("");
