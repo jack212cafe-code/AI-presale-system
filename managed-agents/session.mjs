@@ -78,28 +78,37 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
   const responseChunks = [];
   const startMs = Date.now();
 
-  // Track across stream reconnects
   const seenEventIds = new Set();
-  // Store resolved tool results keyed by event ID for re-submission
   const toolResultStore = new Map(); // eventId → result event object
 
-  try {
-    await client.beta.sessions.events.send(sessionId, {
-      events: [{ type: "user.message", content: [{ type: "text", text: userText }] }],
-    });
-  } catch (error) {
-    if (error.message?.includes("waiting on responses")) {
-      throw new Error("Agent is still processing a previous request. Please wait a moment.");
-    }
-    throw error;
-  }
+  // Queue of events to submit — first item is always the user message
+  const submitQueue = [
+    { type: "user.message", content: [{ type: "text", text: userText }] },
+  ];
 
-  // Stream loop: API processes ONE tool result per cycle, so reopen after each submit
+  // Core pattern: open stream FIRST, then submit, then read events.
+  // This ensures we never miss events that fire between submit and stream open.
   let finalDone = false;
   while (!finalDone) {
     const pendingTools = [];
+    // 1. Open stream BEFORE submitting anything
     const stream = await client.beta.sessions.events.stream(sessionId);
 
+    // 2. Submit queued event (user message or tool result)
+    if (submitQueue.length > 0) {
+      const toSend = submitQueue.shift();
+      try {
+        console.log(`[Agent Send] type: ${toSend.type}`);
+        await client.beta.sessions.events.send(sessionId, { events: [toSend] });
+      } catch (error) {
+        if (error.message?.includes("waiting on responses")) {
+          throw new Error("Agent is still processing a previous request. Please wait a moment.");
+        }
+        throw error;
+      }
+    }
+
+    // 3. Read events from stream
     for await (const event of stream) {
       if (event.id && seenEventIds.has(event.id)) continue;
       if (event.id) seenEventIds.add(event.id);
@@ -125,7 +134,7 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
       } else if (event.type === "session.status_idle") {
         const requiredIds = event.stop_reason?.event_ids || [];
 
-        // Execute NEW tool calls (parallel) and store results
+        // Execute NEW tool calls in parallel, store results
         if (pendingTools.length > 0) {
           console.log(`[Agent Action] Executing ${pendingTools.length} tools...`);
           await Promise.all(
@@ -141,17 +150,15 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
           );
         }
 
-        // Submit ONE stored result that the API still requires
+        // Queue ONE stored result that the API still requires
         const nextToSubmit = requiredIds.find((id) => toolResultStore.has(id));
         if (nextToSubmit) {
-          const resultEvent = toolResultStore.get(nextToSubmit);
+          submitQueue.push(toolResultStore.get(nextToSubmit));
           toolResultStore.delete(nextToSubmit);
-          console.log(`[Agent Submit] Sending result for ${nextToSubmit}`);
-          await client.beta.sessions.events.send(sessionId, { events: [resultEvent] });
-          break; // reopen stream for next cycle
+          console.log(`[Agent Queue] Will submit result for ${nextToSubmit}`);
+          break; // reopen stream, then submit
         }
 
-        // No more tools needed → done
         finalDone = true;
         break;
       } else if (event.type === "session.status_terminated") {
@@ -160,7 +167,9 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
       }
     }
 
-    if (!finalDone && toolResultStore.size === 0) finalDone = true;
+    if (!finalDone && submitQueue.length === 0 && toolResultStore.size === 0) {
+      finalDone = true;
+    }
   }
 
   const text = responseChunks.join("");
