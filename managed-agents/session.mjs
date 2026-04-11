@@ -76,12 +76,7 @@ async function getOrCreateSession(projectId) {
 
 async function runTurn(sessionId, projectId, userText, onStream) {
   const responseChunks = [];
-  const pendingTools = [];
   const startMs = Date.now();
-
-  // 1. Verify session is idle before sending a new user message
-  // If the session is waiting for a tool result, we must resolve that first
-  const stream = await client.beta.sessions.events.stream(sessionId);
 
   try {
     await client.beta.sessions.events.send(sessionId, {
@@ -89,60 +84,61 @@ async function runTurn(sessionId, projectId, userText, onStream) {
     });
   } catch (error) {
     if (error.message?.includes("waiting on responses")) {
-      // This is the race condition we encountered.
-      // In a more complex system we'd handle pending tools here,
-      // but for now, we'll alert the user that the agent is still thinking.
       throw new Error("Agent is still processing a previous request. Please wait a moment.");
     }
     throw error;
   }
 
-  for await (const event of stream) {
-    console.log(`[Agent Event] type: ${event.type}`, event);
+  // Tool loop: each iteration opens a fresh stream until no more tool calls
+  let done = false;
+  while (!done) {
+    const stream = await client.beta.sessions.events.stream(sessionId);
+    const pendingTools = [];
 
-    if (event.type === "agent.message") {
-      for (const block of event.content) {
-        if (block.type === "text") {
-          responseChunks.push(block.text);
-          onStream?.(block.text);
+    for await (const event of stream) {
+      console.log(`[Agent Event] type: ${event.type}`, event);
+
+      if (event.type === "agent.message") {
+        for (const block of event.content) {
+          if (block.type === "text") {
+            responseChunks.push(block.text);
+            onStream?.(block.text);
+          }
         }
-      }
-    } else if (event.type === "agent.thinking") {
-      onStream?.(JSON.stringify({ type: "agent.thinking" }));
-    } else if (event.type === "agent.custom_tool_use") {
-      const toolName = event.tool_name || event.name;
-      onStream?.(JSON.stringify({
-        type: "agent.custom_tool_use",
-        tool_name: toolName
-      }));
-      console.log(`[Agent Tool] Calling: ${toolName} with input:`, event.input);
-      pendingTools.push({
-        id: event.id,
-        name: toolName,
-        input: event.input,
-      });
-    } else if (event.type === "session.status_idle") {
-      if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
-        console.log(`[Agent Action] Resolving ${pendingTools.length} pending tools...`);
-        const toolsToResolve = [...pendingTools];
-        pendingTools.length = 0;
-        for (const tool of toolsToResolve) {
-          const result = await handleToolCall(tool.name, tool.input);
-          console.log(`[Tool Result] ${tool.name} returned:`, result);
-          await client.beta.sessions.events.send(sessionId, {
-            events: [{
-              type: "user.custom_tool_result",
-              custom_tool_use_id: tool.id,
-              content: [{ type: "text", text: JSON.stringify(result) }],
-            }],
-          });
+      } else if (event.type === "agent.thinking") {
+        onStream?.(JSON.stringify({ type: "agent.thinking" }));
+      } else if (event.type === "agent.custom_tool_use") {
+        const toolName = event.tool_name || event.name;
+        onStream?.(JSON.stringify({ type: "agent.custom_tool_use", tool_name: toolName }));
+        console.log(`[Agent Tool] Calling: ${toolName} with input:`, event.input);
+        pendingTools.push({ id: event.id, name: toolName, input: event.input });
+      } else if (event.type === "session.status_idle") {
+        if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
+          console.log(`[Agent Action] Resolving ${pendingTools.length} pending tools...`);
+          for (const tool of pendingTools) {
+            const result = await handleToolCall(tool.name, tool.input);
+            console.log(`[Tool Result] ${tool.name} returned:`, result);
+            await client.beta.sessions.events.send(sessionId, {
+              events: [{
+                type: "user.custom_tool_result",
+                custom_tool_use_id: tool.id,
+                content: [{ type: "text", text: JSON.stringify(result) }],
+              }],
+            });
+          }
+          // break inner for-await → outer while re-opens stream
+          break;
         }
-        continue;
+        done = true;
+        break;
+      } else if (event.type === "session.status_terminated") {
+        done = true;
+        break;
       }
-      break;
-    } else if (event.type === "session.status_terminated") {
-      break;
     }
+
+    // If no tools were pending and we didn't set done, avoid infinite loop
+    if (!done && pendingTools.length === 0) done = true;
   }
 
   const text = responseChunks.join("");
