@@ -76,11 +76,11 @@ async function getOrCreateSession(projectId) {
 
 async function runTurn(sessionId, projectId, userText, onStream, userId) {
   const responseChunks = [];
-  const pendingTools = [];
   const startMs = Date.now();
 
-  // Open ONE stream before sending the message — keep it open for entire turn
-  const stream = await client.beta.sessions.events.stream(sessionId);
+  // Track processed event IDs to deduplicate across stream reconnects
+  const seenEventIds = new Set();
+  const resolvedToolIds = new Set();
 
   try {
     await client.beta.sessions.events.send(sessionId, {
@@ -93,46 +93,64 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
     throw error;
   }
 
-  for await (const event of stream) {
-    console.log(`[Agent Event] type: ${event.type}`, event);
+  // Stream loop: reopen after each tool-result batch (stream closes after session.status_idle)
+  let finalDone = false;
+  while (!finalDone) {
+    const pendingTools = [];
+    const stream = await client.beta.sessions.events.stream(sessionId);
 
-    if (event.type === "agent.message") {
-      for (const block of event.content) {
-        if (block.type === "text") {
-          responseChunks.push(block.text);
-          onStream?.(block.text);
+    for await (const event of stream) {
+      // Skip already-processed events (stream may replay history on reconnect)
+      if (event.id && seenEventIds.has(event.id)) continue;
+      if (event.id) seenEventIds.add(event.id);
+
+      console.log(`[Agent Event] type: ${event.type}`, JSON.stringify(event).slice(0, 200));
+
+      if (event.type === "agent.message") {
+        for (const block of event.content) {
+          if (block.type === "text") {
+            responseChunks.push(block.text);
+            onStream?.(block.text);
+          }
         }
-      }
-    } else if (event.type === "agent.thinking") {
-      onStream?.(JSON.stringify({ type: "agent.thinking" }));
-    } else if (event.type === "agent.custom_tool_use") {
-      const toolName = event.tool_name || event.name;
-      onStream?.(JSON.stringify({ type: "agent.custom_tool_use", tool_name: toolName }));
-      console.log(`[Agent Tool] Calling: ${toolName} with input:`, event.input);
-      pendingTools.push({ id: event.id, name: toolName, input: event.input });
-    } else if (event.type === "session.status_idle") {
-      if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
-        console.log(`[Agent Action] Resolving ${pendingTools.length} pending tools...`);
-        const toResolve = pendingTools.splice(0); // drain and keep reference
-        for (const tool of toResolve) {
-          const result = await handleToolCall(tool.name, tool.input);
-          console.log(`[Tool Result] ${tool.name} returned:`, result);
-          await client.beta.sessions.events.send(sessionId, {
-            events: [{
-              type: "user.custom_tool_result",
-              custom_tool_use_id: tool.id,
-              content: [{ type: "text", text: JSON.stringify(result) }],
-            }],
-          });
+      } else if (event.type === "agent.thinking") {
+        onStream?.(JSON.stringify({ type: "agent.thinking" }));
+      } else if (event.type === "agent.custom_tool_use") {
+        if (!resolvedToolIds.has(event.id)) {
+          const toolName = event.tool_name || event.name;
+          onStream?.(JSON.stringify({ type: "agent.custom_tool_use", tool_name: toolName }));
+          console.log(`[Agent Tool] Calling: ${toolName}`);
+          pendingTools.push({ id: event.id, name: toolName, input: event.input });
         }
-        // Stream stays open — continue receiving events after tool results
-        continue;
+      } else if (event.type === "session.status_idle") {
+        if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
+          console.log(`[Agent Action] Resolving ${pendingTools.length} tools...`);
+          for (const tool of pendingTools) {
+            resolvedToolIds.add(tool.id);
+            const result = await handleToolCall(tool.name, tool.input);
+            console.log(`[Tool Result] ${tool.name} done`);
+            await client.beta.sessions.events.send(sessionId, {
+              events: [{
+                type: "user.custom_tool_result",
+                custom_tool_use_id: tool.id,
+                content: [{ type: "text", text: JSON.stringify(result) }],
+              }],
+            });
+          }
+          // Stream closed after idle — break inner loop, while reopens
+          break;
+        }
+        // No pending tools → agent truly done
+        finalDone = true;
+        break;
+      } else if (event.type === "session.status_terminated") {
+        finalDone = true;
+        break;
       }
-      // No requires_action → agent finished
-      break;
-    } else if (event.type === "session.status_terminated") {
-      break;
     }
+
+    // Safety: if stream ended with no tools and no finalDone signal
+    if (!finalDone && pendingTools.length === 0) finalDone = true;
   }
 
   const text = responseChunks.join("");
