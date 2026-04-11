@@ -674,9 +674,14 @@ export async function appHandler(request, response) {
           userId,
           onProgress
         });
-      } finally {
+      } catch (chatError) {
+        console.error("[chat] pipeline error:", chatError);
+        sendEvent({ type: "done", ok: false, error: chatError.message });
+        response.end();
         clearInterval(heartbeat);
+        return;
       }
+      clearInterval(heartbeat);
 
       if (result.ok === false || result.stage === "error") {
         sendEvent({ type: "done", ok: false, error: result.text, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage });
@@ -685,6 +690,7 @@ export async function appHandler(request, response) {
       }
       response.end();
     } catch (error) {
+      console.error("[chat] unexpected error:", error);
       try { response.write(`data: ${JSON.stringify({ type: "done", ok: false, error: error.message })}\n\n`); response.end(); } catch {}
     }
     return;
