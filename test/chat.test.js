@@ -37,6 +37,15 @@ async function makeAuthenticatedRequest(method, path, body) {
     opts.body = JSON.stringify(body);
   }
   const res = await fetch(`${baseUrl}${path}`, opts);
+
+  if (res.headers.get("content-type")?.includes("text/event-stream")) {
+    const text = await res.text();
+    const lines = text.split("\n\n").filter(line => line.trim().startsWith("data: "));
+    const lastLine = lines[lines.length - 1] || "";
+    const jsonString = lastLine.replace(/^data: /, "");
+    return { statusCode: res.status, body: JSON.parse(jsonString) };
+  }
+
   const responseBody = await res.json();
   return { statusCode: res.status, body: responseBody };
 }
@@ -68,7 +77,7 @@ describe("POST /api/chat", () => {
     const { statusCode, body } = await makeAuthenticatedRequest("POST", "/api/chat", {
       message: "HCI + Backup for 100 users"
     });
-    assert.equal(statusCode, 201);
+    assert.equal(statusCode, 200);
     assert.equal(body.ok, true);
     assert.equal(typeof body.conversation_id, "string");
     assert.ok(body.conversation_id.length > 0);
@@ -109,7 +118,7 @@ describe("error handling (S2)", () => {
     const { statusCode, body } = await makeAuthenticatedRequest("POST", "/api/chat", {
       message: "HCI + Backup for 200 users, 50 VMs"
     });
-    assert.equal(statusCode, 201);
+    assert.equal(statusCode, 200);
     assert.equal(body.ok, true);
     assert.equal(body.stage, "discovery_questions");
     assert.ok(body.text.length > 0, "Should return discovery question text");
@@ -139,7 +148,7 @@ describe("error handling (S2)", () => {
     const { statusCode, body } = await makeAuthenticatedRequest("POST", "/api/chat", {
       message: "ต้องการระบบ HCI สำหรับ 100 VM"
     });
-    assert.equal(statusCode, 201);
+    assert.equal(statusCode, 200);
     assert.equal(body.stage, "discovery_questions");
     assert.ok(body.text, "response must have text");
     assert.ok(body.text.length > 10, "question text must be non-trivial");
