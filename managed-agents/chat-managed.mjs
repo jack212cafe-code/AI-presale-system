@@ -15,6 +15,7 @@ import {
 } from "../lib/conversations.js";
 import { createProjectRecord } from "../lib/projects.js";
 import { normalizeIntakePayload } from "../lib/intake.js";
+import { handleToolCall } from "./tool-handlers.mjs";
 export { withTimeout } from "../lib/chat.js";
 import { chat } from "./session.mjs";
 

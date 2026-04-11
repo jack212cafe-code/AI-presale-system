@@ -122,19 +122,19 @@ async function runTurn(sessionId, projectId, userText, onStream) {
     } else if (event.type === "session.status_idle") {
       if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
         console.log(`[Agent Action] Resolving ${pendingTools.length} pending tools...`);
-        const results = await Promise.all(
-          pendingTools.map(async (tool) => {
-            const result = await handleToolCall(tool.name, tool.input);
-            console.log(`[Tool Result] ${tool.name} returned:`, result);
-            return {
+        const toolsToResolve = [...pendingTools];
+        pendingTools.length = 0;
+        for (const tool of toolsToResolve) {
+          const result = await handleToolCall(tool.name, tool.input);
+          console.log(`[Tool Result] ${tool.name} returned:`, result);
+          await client.beta.sessions.events.send(sessionId, {
+            events: [{
               type: "user.custom_tool_result",
               custom_tool_use_id: tool.id,
               content: [{ type: "text", text: JSON.stringify(result) }],
-            };
-          }),
-        );
-        pendingTools.length = 0;
-        await client.beta.sessions.events.send(sessionId, { events: results });
+            }],
+          });
+        }
         continue;
       }
       break;
