@@ -427,12 +427,14 @@ export async function appHandler(request, response) {
     }
 
     try {
-      const payload = normalizeKnowledgeUploadPayload(await parseBody(request));
+      const payload = await parseBody(request);
+      console.log(`[kb-upload] Starting upload for file: ${payload.file_name}`);
       const savedFile = await saveUploadedRawDocument({
         fileName: payload.file_name,
         contentBase64: payload.content_base64,
         metadata: payload.metadata
       });
+      console.log(`[kb-upload] File saved to: ${savedFile.relativePath}`);
       const jobId = createJob({
         status: "queued",
         stage: "queued",
@@ -440,7 +442,9 @@ export async function appHandler(request, response) {
         message: `Queued import for ${savedFile.relativePath}`,
         source_file: savedFile.relativePath
       });
+      console.log(`[kb-upload] Job created: ${jobId}`);
       startKnowledgeImportJob(jobId, savedFile.relativePath);
+
 
       return json(response, 202, {
         ok: true,

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { config, hasEmbeddingConfig } from "../lib/config.js";
 import { upsertKnowledgeBase } from "../lib/supabase.js";
+import { logger } from "../lib/logger.js";
 import { chunkText, inferMetadata } from "./shared.js";
 
 const __filename = fileURLToPath(import.meta.url);
