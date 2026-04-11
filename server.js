@@ -41,7 +41,7 @@ import { runAllSpecialists } from "./agents/specialist.js";
 import { runBomAgent } from "./agents/bom.js";
 import { runProposalAgent } from "./agents/proposal.js";
 import { checkBudgetOverrun } from "./lib/budget.js";
-import { handleChatMessage, withTimeout } from "./managed-agents/chat-managed.mjs";
+import { handleChatMessage } from "./lib/chat.js";
 import { runTorPipeline } from "./agents/tor.js";
 import { generateTorComplianceCsv, getTorExportFilename } from "./lib/tor-export.js";
 import { getMessagesByConversation, getConversationsByProject } from "./lib/conversations.js";
@@ -263,7 +263,7 @@ export async function appHandler(request, response) {
       const intake = normalizeIntakePayload(rawPayload);
       const userId = getSessionUserId(request);
       const created = await createProjectRecord(intake, userId);
-      const requirements = await withTimeout(() => runDiscoveryAgent(intake, {
+      const requirements = await runDiscoveryAgent(intake, {
         projectId: created.project.id
       }));
 
@@ -298,7 +298,7 @@ export async function appHandler(request, response) {
         return json(response, 400, { ok: false, error: "Discovery must be completed before solution design" });
       }
 
-      const solution = await withTimeout(() => runSolutionAgent(project.requirements_json, { projectId: project.id }));
+      const solution = await runSolutionAgent(project.requirements_json, { projectId: project.id });
       return json(response, 200, { ok: true, project_id: project.id, solution });
     } catch (error) {
       return json(response, 400, { ok: false, error: error.message });
