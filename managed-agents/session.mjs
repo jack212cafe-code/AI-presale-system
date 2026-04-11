@@ -106,10 +106,11 @@ async function runTurn(sessionId, projectId, userText, onStream) {
         }
       }
     } else if (event.type === "agent.custom_tool_use") {
-      console.log(`[Agent Tool] Calling: ${event.tool_name} with input:`, event.input);
+      const toolName = event.tool_name || event.name;
+      console.log(`[Agent Tool] Calling: ${toolName} with input:`, event.input);
       pendingTools.push({
         id: event.id,
-        name: event.tool_name,
+        name: toolName,
         input: event.input,
       });
     } else if (event.type === "session.status_idle") {
