@@ -265,7 +265,7 @@ export async function appHandler(request, response) {
       const created = await createProjectRecord(intake, userId);
       const requirements = await runDiscoveryAgent(intake, {
         projectId: created.project.id
-      }));
+      });
 
       const persisted = await persistRequirementsJson(created.project.id, requirements);
 
