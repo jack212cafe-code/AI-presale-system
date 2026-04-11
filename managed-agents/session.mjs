@@ -138,11 +138,10 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
   const text = responseChunks.join("");
   writeAgentLog({
     project_id: projectId ?? null,
-    user_id: userId ?? null,
     agent_name: "managed-agent",
     model_used: "claude-sonnet-4-6",
     tokens_used: 0,
-    cost_usd: null,
+    cost_usd: 0,
     duration_ms: Date.now() - startMs,
     status: "success",
   }).catch((e) => console.warn("[audit] log write failed:", e.message));
