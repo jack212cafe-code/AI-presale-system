@@ -33,6 +33,7 @@ import {
   recordProjectFeedback,
   getAdminFeedbackSummary
 } from "./lib/projects.js";
+import { orgUserManager } from "./lib/org-user-manager.js";
 import { runDiscoveryAgent } from "./agents/discovery.js";
 import { runSolutionAgent } from "./agents/solution.js";
 import { runAllSpecialists } from "./agents/specialist.js";
@@ -44,7 +45,9 @@ import { runTorPipeline } from "./agents/tor.js";
 import { generateTorComplianceCsv, getTorExportFilename } from "./lib/tor-export.js";
 import { getMessagesByConversation, getConversationsByProject } from "./lib/conversations.js";
 import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments, readAgentLogs } from "./lib/supabase.js";
-import { config } from "./lib/config.js";
+import { PdfExportEngine } from './lib/pdf-export.js';
+const pdfEngine = new PdfExportEngine();
+
 import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } from "./knowledge_base/raw-import-lib.js";
 import { upsertVendorPreference } from "./lib/user-preferences.js";
 import { checkKbCoverage } from "./scripts/check-kb-coverage.js";
@@ -762,7 +765,47 @@ export async function appHandler(request, response) {
     }
   }
 
-  // ── User Management (admin only) ────────────────────────────────────────────
+  if (request.method === "POST" && url.pathname === "/api/admin/invite") {
+    if (!requireRole(request, response, ["admin", "manager"])) return;
+    try {
+      const body = await parseBody(request);
+      const adminUserId = getSessionUserId(request);
+      const result = await orgUserManager.inviteUser(adminUserId, body);
+      return json(response, 201, { ok: true, user: result.user });
+    } catch (error) {
+      return json(response, 400, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/org/members") {
+    if (!requireUserAuth(request, response)) return;
+    try {
+      const user = getSessionUser(request);
+      if (!user || !user.orgId) {
+        return json(response, 400, { ok: false, error: "User does not belong to an organization" });
+      }
+      const members = await orgUserManager.listOrgMembers(user.orgId);
+      return json(response, 200, { ok: true, members });
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/org/members/role") {
+    if (!requireRole(request, response, ["admin", "manager"])) return;
+    try {
+      const body = await parseBody(request);
+      const { targetUserId, newRole } = body;
+      const adminUserId = getSessionUserId(request);
+      if (!targetUserId || !newRole) {
+        return json(response, 400, { ok: false, error: "targetUserId and newRole are required" });
+      }
+      await orgUserManager.updateMemberRole(targetUserId, newRole, adminUserId);
+      return json(response, 200, { ok: true });
+    } catch (error) {
+      return json(response, 400, { ok: false, error: error.message });
+    }
+  }
 
   if (request.method === "POST" && url.pathname.match(/^\/api\/projects\/[^/]+\/feedback$/)) {
     if (!requireUserAuth(request, response)) return;
@@ -888,8 +931,45 @@ export async function appHandler(request, response) {
     }
   }
 
-  if (url.pathname.startsWith("/api/")) {
-    return json(response, 404, { error: "Route not found" });
+  if (request.method === "GET" && url.pathname.match(/^\/api\/projects\/[^/]+\/export\/pdf$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const projectId = url.pathname.split("/")[3];
+    const type = url.searchParams.get("type") || "proposal";
+    try {
+      const project = await getProjectById(projectId);
+      if (!project) return json(response, 404, { ok: false, error: "Project not found" });
+
+      let pdfBuffer;
+      if (type === "bom") {
+        const bom = await persistBomJson(projectId, {}); // Trigger reload or fetch existing
+        pdfBuffer = await pdfEngine.generateBomPdf(bom, projectId);
+      } else {
+        // Proposal PDF needs full data
+        const requirements = await persistRequirementsJson(projectId, {});
+        const solution = await persistSolutionJson(projectId, {});
+        const bom = await persistBomJson(projectId, {});
+
+        // Re-construct data for PDF engine
+        const proposalData = {
+          customerName: project.customer_name,
+          projectName: `${project.customer_name} Presale Proposal`,
+          executiveSummary: "Loading...", // In real flow, fetch from persisted proposal JSON
+          solutionOverview: "Loading...",
+          bomRows: bom.rows || [],
+          assumptions: [],
+          nextSteps: []
+        };
+        pdfBuffer = await pdfEngine.generateProposalPdf(proposalData);
+      }
+
+      response.writeHead(200, {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${projectId}-export.pdf"`
+      });
+      response.end(pdfBuffer);
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
   }
   return serveFile(response, path.join(__dirname, "error", "404.html"), "text/html; charset=utf-8");
 }
