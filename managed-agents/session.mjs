@@ -74,9 +74,13 @@ async function getOrCreateSession(projectId) {
 
 // ── Event loop ────────────────────────────────────────────────────────────────
 
-async function runTurn(sessionId, projectId, userText, onStream) {
+async function runTurn(sessionId, projectId, userText, onStream, userId) {
   const responseChunks = [];
+  const pendingTools = [];
   const startMs = Date.now();
+
+  // Open ONE stream before sending the message — keep it open for entire turn
+  const stream = await client.beta.sessions.events.stream(sessionId);
 
   try {
     await client.beta.sessions.events.send(sessionId, {
@@ -89,64 +93,55 @@ async function runTurn(sessionId, projectId, userText, onStream) {
     throw error;
   }
 
-  // Tool loop: each iteration opens a fresh stream until no more tool calls
-  let done = false;
-  while (!done) {
-    const stream = await client.beta.sessions.events.stream(sessionId);
-    const pendingTools = [];
+  for await (const event of stream) {
+    console.log(`[Agent Event] type: ${event.type}`, event);
 
-    for await (const event of stream) {
-      console.log(`[Agent Event] type: ${event.type}`, event);
-
-      if (event.type === "agent.message") {
-        for (const block of event.content) {
-          if (block.type === "text") {
-            responseChunks.push(block.text);
-            onStream?.(block.text);
-          }
+    if (event.type === "agent.message") {
+      for (const block of event.content) {
+        if (block.type === "text") {
+          responseChunks.push(block.text);
+          onStream?.(block.text);
         }
-      } else if (event.type === "agent.thinking") {
-        onStream?.(JSON.stringify({ type: "agent.thinking" }));
-      } else if (event.type === "agent.custom_tool_use") {
-        const toolName = event.tool_name || event.name;
-        onStream?.(JSON.stringify({ type: "agent.custom_tool_use", tool_name: toolName }));
-        console.log(`[Agent Tool] Calling: ${toolName} with input:`, event.input);
-        pendingTools.push({ id: event.id, name: toolName, input: event.input });
-      } else if (event.type === "session.status_idle") {
-        if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
-          console.log(`[Agent Action] Resolving ${pendingTools.length} pending tools...`);
-          for (const tool of pendingTools) {
-            const result = await handleToolCall(tool.name, tool.input);
-            console.log(`[Tool Result] ${tool.name} returned:`, result);
-            await client.beta.sessions.events.send(sessionId, {
-              events: [{
-                type: "user.custom_tool_result",
-                custom_tool_use_id: tool.id,
-                content: [{ type: "text", text: JSON.stringify(result) }],
-              }],
-            });
-          }
-          // break inner for-await → outer while re-opens stream
-          break;
-        }
-        done = true;
-        break;
-      } else if (event.type === "session.status_terminated") {
-        done = true;
-        break;
       }
+    } else if (event.type === "agent.thinking") {
+      onStream?.(JSON.stringify({ type: "agent.thinking" }));
+    } else if (event.type === "agent.custom_tool_use") {
+      const toolName = event.tool_name || event.name;
+      onStream?.(JSON.stringify({ type: "agent.custom_tool_use", tool_name: toolName }));
+      console.log(`[Agent Tool] Calling: ${toolName} with input:`, event.input);
+      pendingTools.push({ id: event.id, name: toolName, input: event.input });
+    } else if (event.type === "session.status_idle") {
+      if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
+        console.log(`[Agent Action] Resolving ${pendingTools.length} pending tools...`);
+        const toResolve = pendingTools.splice(0); // drain and keep reference
+        for (const tool of toResolve) {
+          const result = await handleToolCall(tool.name, tool.input);
+          console.log(`[Tool Result] ${tool.name} returned:`, result);
+          await client.beta.sessions.events.send(sessionId, {
+            events: [{
+              type: "user.custom_tool_result",
+              custom_tool_use_id: tool.id,
+              content: [{ type: "text", text: JSON.stringify(result) }],
+            }],
+          });
+        }
+        // Stream stays open — continue receiving events after tool results
+        continue;
+      }
+      // No requires_action → agent finished
+      break;
+    } else if (event.type === "session.status_terminated") {
+      break;
     }
-
-    // If no tools were pending and we didn't set done, avoid infinite loop
-    if (!done && pendingTools.length === 0) done = true;
   }
 
   const text = responseChunks.join("");
   writeAgentLog({
     project_id: projectId ?? null,
+    user_id: userId ?? null,
     agent_name: "managed-agent",
     model_used: "claude-sonnet-4-6",
-    tokens_used: null,
+    tokens_used: 0,
     cost_usd: null,
     duration_ms: Date.now() - startMs,
     status: "success",
