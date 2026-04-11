@@ -88,7 +88,7 @@ async function serveFile(response, filePath, contentType) {
 }
 
 async function parseBody(request) {
-  const MAX_BODY_BYTES = 1_048_576;
+  const MAX_BODY_BYTES = 20 * 1024 * 1024; // Increase to 20MB to support KB imports
   const chunks = [];
   let totalBytes = 0;
   for await (const chunk of request) {
