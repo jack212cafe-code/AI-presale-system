@@ -145,7 +145,6 @@ function sanitizeBomOutput(output) {
     notes: String(row.notes ?? "").trim()
   }));
 
-  // Professional Category Sorting
   const categoryOrder = {
     "[Compute]": 1, "Compute": 1, "คอมพิวท์": 1, "เซิร์ฟเวอร์": 1,
     "[Storage]": 2, "Storage": 2, "สตอเรจ": 2, "จัดเก็บข้อมูล": 2,
@@ -172,20 +171,15 @@ export async function runBomAgent(solution, options = {}) {
   const selected = solution.options[solution.selected_option ?? 0];
   const scale = options.requirements?.scale ?? {};
 
-  // Build explicit vendor enforcement instruction
   const vendorStack = selected?.vendor_stack ?? [];
-
-  // Hybrid KB retrieval: vendor-filtered (exact specs) + vector (use-case context)
   let kbContext = "";
   let kbChunks = [];
+
   try {
     const chunkMap = new Map();
-
-    // 1. Vendor-filtered: exact product spec sheets for each vendor in solution
     const vendorChunks = await retrieveKnowledgeByVendorFilter(vendorStack, 4);
     for (const c of vendorChunks) chunkMap.set(c.source_key, c);
 
-    // 2. Vector: use-case context (backup patterns, sizing guides)
     if (options.requirements) {
       const { chunks: vectorChunks } = await getKnowledge(options.requirements);
       for (const c of vectorChunks) {
@@ -195,7 +189,6 @@ export async function runBomAgent(solution, options = {}) {
 
     kbChunks = Array.from(chunkMap.values());
     if (kbChunks.length > 0) {
-      // Extract verified model numbers from KB to enforce KB-only constraint
       const MODEL_PATTERN = /\b([A-Z]{1,4}\d{2,5}[A-Za-z0-9]{0,5})\b/gi;
       const kbModelSet = new Set();
       for (const chunk of kbChunks) {
@@ -214,6 +207,7 @@ export async function runBomAgent(solution, options = {}) {
     console.warn(`[bom] KB retrieval failed — BOM will be generated without grounding data: ${kbError.message}`);
     kbContext = `\n\n[KB UNAVAILABLE — ห้ามระบุ model number ใดๆ จาก training data ทั้งสิ้น เขียน "ยืนยัน model กับ distributor" แทนทุก hardware row]`;
   }
+
   const vendorEnforcement = vendorStack.length > 0
     ? `\n\n[VENDOR ENFORCEMENT]\nThis BOM MUST use ONLY these vendors as specified in the selected solution: ${vendorStack.join(", ")}. Do NOT substitute any vendor. Every hardware row must come from this vendor list.`
     : "";
@@ -223,7 +217,6 @@ export async function runBomAgent(solution, options = {}) {
     const sections = options.specialistBriefs.map(brief => {
       const label = { dell_presale: "Dell Presale Engineer", hpe_presale: "HPE Presale Engineer", lenovo_presale: "Lenovo Presale Engineer", neteng: "Network Engineer", devops: "DevOps/Management", ai_eng: "AI Engineer" }[brief.domain] ?? brief.domain;
 
-      // Transform JSON to Imperative Directives to prevent LLM over-caution
       let directives = [];
       if (brief.sizing_notes) directives.push(`Sizing Specs: ${brief.sizing_notes}`);
       if (brief.recommendations) directives.push(`Recommendations: ${brief.recommendations}`);
