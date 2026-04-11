@@ -105,8 +105,14 @@ async function runTurn(sessionId, projectId, userText, onStream) {
           onStream?.(block.text);
         }
       }
+    } else if (event.type === "agent.thinking") {
+      onStream?.(JSON.stringify({ type: "agent.thinking" }));
     } else if (event.type === "agent.custom_tool_use") {
       const toolName = event.tool_name || event.name;
+      onStream?.(JSON.stringify({
+        type: "agent.custom_tool_use",
+        tool_name: toolName
+      }));
       console.log(`[Agent Tool] Calling: ${toolName} with input:`, event.input);
       pendingTools.push({
         id: event.id,
