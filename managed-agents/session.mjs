@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { config } from "dotenv";
 import { handleToolCall, getSessionId, saveSessionId } from "./tool-handlers.mjs";
+import { writeAgentLog } from "../lib/supabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,6 +77,7 @@ async function getOrCreateSession(projectId) {
 async function runTurn(sessionId, projectId, userText, onStream) {
   const responseChunks = [];
   const pendingTools = [];
+  const startMs = Date.now();
 
   // 1. Verify session is idle before sending a new user message
   // If the session is waiting for a tool result, we must resolve that first
@@ -143,5 +145,15 @@ async function runTurn(sessionId, projectId, userText, onStream) {
     }
   }
 
-  return { text: responseChunks.join("") };
+  const text = responseChunks.join("");
+  writeAgentLog({
+    project_id: projectId ?? null,
+    agent_name: "managed-agent",
+    model_used: "claude-sonnet-4-6",
+    tokens_used: null,
+    cost_usd: null,
+    duration_ms: Date.now() - startMs,
+    status: "success",
+  }).catch((e) => console.warn("[audit] log write failed:", e.message));
+  return { text };
 }
