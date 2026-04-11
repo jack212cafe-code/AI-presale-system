@@ -52,7 +52,7 @@ export async function handleChatMessage({ conversationId, message, userId, onPro
 
   let fullText = "";
   await chat(projectId, message, (chunk) => {
-    fullText += chunk;
+    if (!chunk.startsWith('{"type":')) fullText += chunk;
     onProgress?.(2, 2, `Agent is typing... ${fullText.slice(-20)}...`);
     // We can't send the final text via onProgress easily without a custom event type,
     // but we ensure the connection stays alive.
