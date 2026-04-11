@@ -29,6 +29,7 @@ import {
   listProjectsByUser,
   persistRequirementsJson,
   persistSolutionJson,
+  persistSpecialistBriefs,
   persistBomJson,
   approveProject,
   recordProjectFeedback,
@@ -517,6 +518,7 @@ export async function appHandler(request, response) {
       // Stage 3: Specialists + Solution
       stageFailed = "solution";
       const specialistBriefs = await runAllSpecialists(requirements, { projectId });
+      await persistSpecialistBriefs(projectId, specialistBriefs);
       const solution = await runSolutionAgent(requirements, { projectId, specialistBriefs });
       await persistSolutionJson(projectId, solution);
 
