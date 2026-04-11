@@ -200,6 +200,11 @@ async function sendMessage(text) {
           const event = JSON.parse(line.slice(6));
           if (event.type === "progress") {
             updateLoadingProgress(event.step, event.total, event.label);
+          } else if (event.type === "agent.thinking") {
+            updateLoadingProgress(1, 3, "AI กำลังคิดและวิเคราะห์ข้อมูล...");
+          } else if (event.type === "agent.custom_tool_use") {
+            const toolName = event.tool_name || event.name || "Tool";
+            updateLoadingProgress(2, 3, `กำลังใช้งาน ${toolName}...`);
           } else if (event.type === "done") {
             payload = event;
           }
