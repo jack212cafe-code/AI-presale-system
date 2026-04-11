@@ -651,16 +651,30 @@ export async function appHandler(request, response) {
         response.write(`data: ${JSON.stringify(data)}\n\n`);
       };
 
+      let lastProgressAt = Date.now();
       const onProgress = (step, total, label) => {
+        lastProgressAt = Date.now();
         sendEvent({ type: "progress", step, total, label });
       };
 
-      const result = await handleChatMessage({
-        conversationId: payload.conversation_id || null,
-        message: payload.message,
-        userId,
-        onProgress
-      });
+      // Heartbeat every 20s to prevent Render idle-connection timeout
+      const heartbeat = setInterval(() => {
+        if (Date.now() - lastProgressAt > 15000) {
+          response.write(": heartbeat\n\n");
+        }
+      }, 20000);
+
+      let result;
+      try {
+        result = await handleChatMessage({
+          conversationId: payload.conversation_id || null,
+          message: payload.message,
+          userId,
+          onProgress
+        });
+      } finally {
+        clearInterval(heartbeat);
+      }
 
       if (result.ok === false || result.stage === "error") {
         sendEvent({ type: "done", ok: false, error: result.text, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage });

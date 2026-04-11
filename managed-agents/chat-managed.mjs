@@ -48,15 +48,34 @@ export async function handleChatMessage({ conversationId, message, userId, onPro
   }
 
   await addMessage(conversationId, "user", message);
-  onProgress?.(2, 2, "Agent thinking...");
+  onProgress?.(2, 2, "กำลังเชื่อมต่อ Agent...");
+
+  const TOOL_LABELS = {
+    search_knowledge_base: "กำลังค้นหาข้อมูล KB...",
+    get_project: "กำลังโหลดข้อมูล Project...",
+    save_solution: "กำลังบันทึก Solution...",
+    save_bom: "กำลังบันทึก BOM...",
+  };
 
   let fullText = "";
+  let toolCount = 0;
   await chat(projectId, message, (chunk) => {
-    if (!chunk.startsWith('{"type":')) fullText += chunk;
-    onProgress?.(2, 2, `Agent is typing... ${fullText.slice(-20)}...`);
-    // We can't send the final text via onProgress easily without a custom event type,
-    // but we ensure the connection stays alive.
-  });
+    if (chunk.startsWith('{"type":')) {
+      try {
+        const evt = JSON.parse(chunk);
+        if (evt.type === "agent.thinking") {
+          onProgress?.(2, 2, "กำลังคิด...");
+        } else if (evt.type === "agent.custom_tool_use") {
+          toolCount++;
+          const label = TOOL_LABELS[evt.tool_name] ?? `กำลังใช้ ${evt.tool_name}...`;
+          onProgress?.(2, 2, `[${toolCount}] ${label}`);
+        }
+      } catch {}
+    } else {
+      fullText += chunk;
+      onProgress?.(2, 2, "กำลังพิมพ์คำตอบ...");
+    }
+  }, userId);
 
   const text = fullText;
 
