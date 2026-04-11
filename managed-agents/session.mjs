@@ -124,19 +124,21 @@ async function runTurn(sessionId, projectId, userText, onStream, userId) {
         }
       } else if (event.type === "session.status_idle") {
         if (event.stop_reason?.type === "requires_action" && pendingTools.length > 0) {
-          console.log(`[Agent Action] Resolving ${pendingTools.length} tools...`);
-          for (const tool of pendingTools) {
-            resolvedToolIds.add(tool.id);
-            const result = await handleToolCall(tool.name, tool.input);
-            console.log(`[Tool Result] ${tool.name} done`);
-            await client.beta.sessions.events.send(sessionId, {
-              events: [{
+          console.log(`[Agent Action] Resolving ${pendingTools.length} tools in one batch...`);
+          // Execute all tool calls in parallel, then submit ALL results in ONE batch
+          const results = await Promise.all(
+            pendingTools.map(async (tool) => {
+              resolvedToolIds.add(tool.id);
+              const result = await handleToolCall(tool.name, tool.input);
+              console.log(`[Tool Result] ${tool.name} done`);
+              return {
                 type: "user.custom_tool_result",
                 custom_tool_use_id: tool.id,
                 content: [{ type: "text", text: JSON.stringify(result) }],
-              }],
-            });
-          }
+              };
+            })
+          );
+          await client.beta.sessions.events.send(sessionId, { events: results });
           // Stream closed after idle — break inner loop, while reopens
           break;
         }
