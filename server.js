@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { config } from "./config.js";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
