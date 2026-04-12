@@ -15,8 +15,7 @@ const __dirname = path.dirname(__filename);
 export const rawDir = path.join(__dirname, "raw");
 export const manifestPath = path.join(__dirname, "raw-manifest.json");
 
-const depsRoot = path.join(__dirname, "..", ".kb-import-deps", "node_modules");
-const requireFromDeps = createRequire(path.join(depsRoot, "package.json"));
+const _require = createRequire(import.meta.url);
 
 export const supportedExtensions = new Set([".md", ".txt", ".json", ".csv", ".pdf", ".docx", ".xlsx"]);
 
@@ -58,11 +57,9 @@ function inferDocumentType(extension, relativePath) {
 
 function getDependency(name) {
   try {
-    return requireFromDeps(name);
+    return _require(name);
   } catch (error) {
-    throw new Error(
-      `Missing parser dependency "${name}". Run: npm install --no-save --prefix .kb-import-deps pdf-parse mammoth xlsx`
-    );
+    throw new Error(`Missing parser dependency "${name}". Install with: npm install ${name}`);
   }
 }
 
