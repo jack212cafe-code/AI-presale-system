@@ -383,9 +383,7 @@ function appendActionButtons(projectId, stage) {
   `;
 
   const exportActions = [];
-  if (stage === "awaiting_selection") {
-    exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
-  } else if (stage === "bom") {
+  if (stage === "bom") {
     exportActions.push(exportButton("Export BOM (.xlsx)", "bom", projectId));
     exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
   } else if (stage === "complete") {
