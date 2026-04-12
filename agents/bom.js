@@ -18,10 +18,11 @@ const BOM_CALL_TIMEOUT_MS = 25_000;
 const MAX_KB_CONTEXT_CHARS = 3000;
 
 async function callBomWithTimeout({ systemPrompt, userPrompt, model, textFormat }) {
-  const result = await Promise.race([
-    generateJsonWithOpenAI({ systemPrompt, userPrompt, model, textFormat, maxOutputTokens: BOM_MAX_TOKENS }),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("BOM call timeout")), BOM_CALL_TIMEOUT_MS))
-  ]);
+  const result = await generateJsonWithOpenAI({
+    systemPrompt, userPrompt, model, textFormat,
+    maxOutputTokens: BOM_MAX_TOKENS,
+    timeoutMs: BOM_CALL_TIMEOUT_MS
+  });
   if (!Array.isArray(result.output?.rows) || result.output.rows.length === 0) {
     throw new Error("BOM returned empty rows");
   }
