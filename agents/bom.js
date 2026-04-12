@@ -141,6 +141,7 @@ function cleanBomText(value) {
   return String(value ?? "")
     .replace(/\[(.*?) from KB\]/gi, (_, subject) => `ต้องยืนยัน ${String(subject).toLowerCase()} กับ distributor`)
     .replace(/\[(.*?)\]/g, "")
+    .replace(/\bfrom KB\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -151,17 +152,20 @@ function normalizeBomRows(bomJson) {
   const extras = [];
 
   for (const row of rows) {
-    const category = cleanBomText(row.category);
+    const rawCategory = String(row.category ?? "").trim();
     const description = cleanBomText(row.description);
     const notes = cleanBomText(row.notes);
     const normalizedRow = {
-      category: category || "[Other]",
+      category: rawCategory || "[Other]",
       description: description || "ต้องยืนยัน model กับ distributor",
       qty: Math.max(1, Number.isInteger(row.qty) ? row.qty : 1),
       notes
     };
 
-    const matchedSection = REQUIRED_SECTION_CATEGORIES.find((section) => category.includes(section.replace(/[\[\]]/g, "")));
+    const matchedSection = REQUIRED_SECTION_CATEGORIES.find(
+      (section) => rawCategory === section ||
+        rawCategory.replace(/[\[\]]/g, "").trim().toLowerCase() === section.replace(/[\[\]]/g, "").trim().toLowerCase()
+    );
     if (matchedSection) {
       grouped.get(matchedSection).push(normalizedRow);
     } else {
