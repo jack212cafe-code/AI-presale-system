@@ -50,6 +50,7 @@ import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDoc
 import { PdfExportEngine } from './lib/pdf-export.js';
 import { FinancialAnalystAgent } from "./lib/bom-export.js";
 import { buildSolutionBuffer } from "./lib/solution-export.js";
+import { buildSpecSheetBuffer } from "./lib/specsheet.js";
 const pdfEngine = new PdfExportEngine();
 const bomExcelAgent = new FinancialAnalystAgent();
 
@@ -1041,6 +1042,28 @@ export async function appHandler(request, response) {
       response.writeHead(200, {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `attachment; filename="${projectId}-solution.docx"`
+      });
+      response.end(buffer);
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+  if (request.method === "GET" && url.pathname.match(/^\/api\/projects\/[^/]+\/export\/spec$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const projectId = url.pathname.split("/")[3];
+    try {
+      const project = await getProjectById(projectId);
+      if (!project || !project.solution_json) {
+        return json(response, 404, { ok: false, error: "Solution not found" });
+      }
+      const buffer = await buildSpecSheetBuffer({
+        project,
+        requirements: project.requirements_json,
+        solution: project.solution_json
+      });
+      response.writeHead(200, {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Disposition": `attachment; filename="${projectId}-spec-sheet.docx"`
       });
       response.end(buffer);
     } catch (error) {
