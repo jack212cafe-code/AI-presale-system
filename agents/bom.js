@@ -16,6 +16,7 @@ const BOM_MAX_TOKENS = 1200;
 const BOM_CALL_TIMEOUT_MS = 25_000;
 const KB_TIMEOUT_MS = 20_000;
 const KB_CHARS_LIMIT = 3500;
+const REQUIRED_SECTION_CATEGORIES = ["[Compute]", "[Storage]", "[Network]", "[Licensing]", "[Support & Warranty]"];
 
 function extractVerifiedModels(chunks) {
   const models = new Set();
@@ -136,6 +137,63 @@ function sanitizeBomOutput(output) {
   };
 }
 
+function cleanBomText(value) {
+  return String(value ?? "")
+    .replace(/\[(.*?) from KB\]/gi, (_, subject) => `ต้องยืนยัน ${String(subject).toLowerCase()} กับ distributor`)
+    .replace(/\[(.*?)\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeBomRows(bomJson) {
+  const rows = Array.isArray(bomJson.rows) ? bomJson.rows : [];
+  const grouped = new Map(REQUIRED_SECTION_CATEGORIES.map((section) => [section, []]));
+  const extras = [];
+
+  for (const row of rows) {
+    const category = cleanBomText(row.category);
+    const description = cleanBomText(row.description);
+    const notes = cleanBomText(row.notes);
+    const normalizedRow = {
+      category: category || "[Other]",
+      description: description || "ต้องยืนยัน model กับ distributor",
+      qty: Math.max(1, Number.isInteger(row.qty) ? row.qty : 1),
+      notes
+    };
+
+    const matchedSection = REQUIRED_SECTION_CATEGORIES.find((section) => category.includes(section.replace(/[\[\]]/g, "")));
+    if (matchedSection) {
+      grouped.get(matchedSection).push(normalizedRow);
+    } else {
+      extras.push(normalizedRow);
+    }
+  }
+
+  const fallbackDescriptions = {
+    "[Compute]": "Compute node ต้องยืนยัน current-generation model กับ distributor",
+    "[Storage]": "Primary storage family ต้องยืนยัน exact model กับ distributor",
+    "[Network]": "10/25GbE switching ต้องยืนยัน model กับ distributor",
+    "[Licensing]": "Microsoft / Veeam licensing ตาม requirement ของโครงการ",
+    "[Support & Warranty]": "3-5 year support and warranty package"
+  };
+
+  const orderedRows = REQUIRED_SECTION_CATEGORIES.flatMap((section) => {
+    const existing = grouped.get(section) ?? [];
+    if (existing.length > 0) return existing;
+    return [{
+      category: section,
+      description: fallbackDescriptions[section],
+      qty: 1,
+      notes: "AI output did not provide a fully grounded row; verify with distributor"
+    }];
+  });
+
+  return {
+    rows: [...orderedRows, ...extras],
+    notes: Array.isArray(bomJson.notes) ? bomJson.notes.map(cleanBomText).filter(Boolean) : []
+  };
+}
+
 export async function runBomAgent(solution, options = {}) {
   const prompt = await loadPrompt();
   const selected = solution.options[solution.selected_option ?? 0];
@@ -188,7 +246,8 @@ export async function runBomAgent(solution, options = {}) {
     "Every product row should be grounded in the KB. Prefer exact verified model numbers from the KB.",
     "Do not reference prior chats, prior projects, or previous customer names.",
     "Return a practical BOM with concise rows, quantities, and notes.",
-    "If a model number is uncertain, say it must be verified with the distributor instead of inventing one."
+    "If a model number is uncertain, say it must be verified with the distributor instead of inventing one.",
+    "Never emit bracket placeholders like [Disk from KB] or [NIC from KB]."
   ].join("\n- ");
 
   const model = config.openai.models.bom;
@@ -210,7 +269,7 @@ export async function runBomAgent(solution, options = {}) {
     output = await withAgentLogging(
       { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: kbChunks.length },
       () => callBomWithTimeout({
-        systemPrompt: `${prompt}\n\n[RECOVERY]\nThe previous attempt failed validation or timed out.\n- Return valid JSON only.\n- Include at least 5 rows.\n- Keep descriptions short and specific.\n- Do not mention prior chats or old projects.${vendorEnforcement}${specialistContext}${kbContext}`,
+        systemPrompt: `${prompt}\n\n[RECOVERY]\nThe previous attempt failed validation or timed out.\n- Return valid JSON only.\n- Include at least 5 rows.\n- Keep descriptions short and specific.\n- Do not mention prior chats or old projects.\n- Never emit bracket placeholders like [Disk from KB] or [NIC from KB].${vendorEnforcement}${specialistContext}${kbContext}`,
         userPrompt,
         model,
         textFormat: bomTextFormat
@@ -218,5 +277,6 @@ export async function runBomAgent(solution, options = {}) {
     );
   }
 
-  return validateBom(groundBom(sanitizeBomOutput(output), kbChunks));
+  const repaired = normalizeBomRows(groundBom(sanitizeBomOutput(output), kbChunks));
+  return validateBom(repaired);
 }

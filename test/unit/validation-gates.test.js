@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { validateGate1, extractBomGroundingWarnings } from "../../lib/validation.js";
+import { validateGate1, extractBomGroundingWarnings, validateBom } from "../../lib/validation.js";
 
 describe("validateGate1 — Discovery → Solution gate", () => {
   const validReqs = {
@@ -82,5 +82,26 @@ describe("extractBomGroundingWarnings — Gate 2 BOM check", () => {
   it("returns empty when bom.rows is missing", () => {
     assert.deepEqual(extractBomGroundingWarnings({}), []);
     assert.deepEqual(extractBomGroundingWarnings(null), []);
+  });
+});
+
+describe("validateBom", () => {
+  it("rejects placeholder fragments in descriptions", () => {
+    assert.throws(() => validateBom({
+      rows: [
+        { category: "Compute", description: "Dell PowerEdge R760 [Disk from KB]", qty: 1, notes: "" }
+      ],
+      notes: []
+    }));
+  });
+
+  it("accepts cleaned BOM rows", () => {
+    const bom = {
+      rows: [
+        { category: "[Compute]", description: "Dell PowerEdge R760: 2x Xeon Gold 6354", qty: 3, notes: "สเปกตามคำสั่งจาก Specialist" }
+      ],
+      notes: []
+    };
+    assert.deepEqual(validateBom(bom), bom);
   });
 });

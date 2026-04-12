@@ -218,7 +218,7 @@ function buildMockRequirements(intake, mode) {
       "User can identify the next key questions without extra presale escalation"
     ],
     scale: {
-      users: intake.users ?? DISCOVERY_DEFAULTS.users,
+      users: intake.users ?? null,
       vm_count: intake.vm_count ?? DISCOVERY_DEFAULTS.vm_count,
       storage_tb: intake.storage_tb ?? DISCOVERY_DEFAULTS.storage_tb,
       vm_count_3yr: null
@@ -235,6 +235,9 @@ function buildMockRequirements(intake, mode) {
     gaps: intake.users ? [] : ["User count not confirmed"],
     source_mode: "mock",
     category: "HCI",
+    explicit_fields: {
+      users: Boolean(intake.users)
+    },
     assumptions_applied: []
   };
 }
@@ -251,17 +254,28 @@ function toArray(value) {
   return [String(value).trim()];
 }
 
-function sanitizeRequirements(output, intake) {
+function hasExplicitUserCount(discoveryReply, intake) {
+  if (intake.users != null) return true;
+  if (!discoveryReply || typeof discoveryReply !== "string") return false;
+  return /\b(\d{1,4})\s*(users?|people|persons?|คน)\b/i.test(discoveryReply);
+}
+
+function sanitizeRequirements(output, intake, discoveryReply) {
   const requirements = output && typeof output === "object" ? output : {};
+  const explicitUsers = hasExplicitUserCount(discoveryReply, intake);
   const customerProfile =
     requirements.customer_profile && typeof requirements.customer_profile === "object"
       ? requirements.customer_profile
       : { name: intake.customer_name, industry: intake.industry ?? null };
   const scale =
     requirements.scale && typeof requirements.scale === "object"
-      ? { ...requirements.scale, vm_count_3yr: requirements.scale.vm_count_3yr ?? null }
+      ? {
+          ...requirements.scale,
+          users: explicitUsers ? (requirements.scale.users ?? intake.users ?? null) : null,
+          vm_count_3yr: requirements.scale.vm_count_3yr ?? null
+        }
       : {
-          users: intake.users ?? null,
+          users: explicitUsers ? (intake.users ?? null) : null,
           vm_count: intake.vm_count ?? null,
           storage_tb: intake.storage_tb ?? null,
           vm_count_3yr: null
@@ -311,6 +325,9 @@ function sanitizeRequirements(output, intake) {
     gaps: toArray(requirements.gaps),
     source_mode: requirements.source_mode ?? "live",
     category: requirements.category ?? null,
+    explicit_fields: {
+      users: explicitUsers
+    },
     assumptions_applied: computeAssumptions(scale, requirements.budget_range, intake)
   };
 }
@@ -322,9 +339,6 @@ function computeAssumptions(scale, budgetRange, intake) {
   }
   if (scale.storage_tb === DISCOVERY_DEFAULTS.storage_tb && !intake.storage_tb) {
     assumptions.push(`ใช้ค่าเริ่มต้น: Storage ${DISCOVERY_DEFAULTS.storage_tb} TB`);
-  }
-  if (scale.users === DISCOVERY_DEFAULTS.users && !intake.users) {
-    assumptions.push(`ใช้ค่าเริ่มต้น: ผู้ใช้ ${DISCOVERY_DEFAULTS.users} คน`);
   }
   if ((!budgetRange || budgetRange === "Unknown") && (!intake.budget_range_thb || intake.budget_range_thb === "Unknown")) {
     assumptions.push(`ใช้ค่าเริ่มต้น: งบ ${DISCOVERY_DEFAULTS.budget_range_thb}`);
@@ -366,7 +380,7 @@ export async function runDiscoveryAgent(intake, options = {}) {
     return output;
   }
 
-  const sanitized = sanitizeRequirements(output, intake);
+  const sanitized = sanitizeRequirements(output, intake, discoveryReply);
   const validated = validateRequirements(sanitized);
 
   // Map category to use_cases for downstream solution agent routing

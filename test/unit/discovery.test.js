@@ -48,6 +48,21 @@ describe("parse_answers mode", () => {
     });
     assert.ok(Array.isArray(result.assumptions_applied), "assumptions_applied must be an array");
   });
+
+  it("does not invent user count when the customer did not mention users", async () => {
+    const result = await runDiscoveryAgent(
+      {
+        ...testIntake,
+        users: null
+      },
+      {
+        mode: "parse_answers",
+        discoveryReply: "50 VM, 20TB storage, budget 3M THB"
+      }
+    );
+    assert.equal(result.scale.users, null);
+    assert.equal(result.explicit_fields?.users, false);
+  });
 });
 
 describe("CATEGORY_TO_USE_CASES", () => {
