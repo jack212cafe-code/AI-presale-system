@@ -175,18 +175,23 @@ export async function runBomAgent(solution, options = {}) {
   let kbChunks = [];
 
   try {
-    const chunkMap = new Map();
-    const vendorChunks = await retrieveKnowledgeByVendorFilter(vendorStack, 4);
-    for (const c of vendorChunks) chunkMap.set(c.source_key, c);
+    await Promise.race([
+      (async () => {
+        const chunkMap = new Map();
+        const vendorChunks = await retrieveKnowledgeByVendorFilter(vendorStack, 4);
+        for (const c of vendorChunks) chunkMap.set(c.source_key, c);
 
-    if (options.requirements) {
-      const { chunks: vectorChunks } = await getKnowledge(options.requirements);
-      for (const c of vectorChunks) {
-        if (!chunkMap.has(c.source_key)) chunkMap.set(c.source_key, c);
-      }
-    }
+        if (options.requirements) {
+          const { chunks: vectorChunks } = await getKnowledge(options.requirements);
+          for (const c of vectorChunks) {
+            if (!chunkMap.has(c.source_key)) chunkMap.set(c.source_key, c);
+          }
+        }
 
-    kbChunks = Array.from(chunkMap.values());
+        kbChunks = Array.from(chunkMap.values());
+      })(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("KB retrieval timeout")), 20_000))
+    ]);
     if (kbChunks.length > 0) {
       const MODEL_PATTERN = /\b([A-Z]{1,4}\d{2,5}[A-Za-z0-9]{0,5})\b/gi;
       const kbModelSet = new Set();
