@@ -307,6 +307,7 @@ export async function runSpecialistAgent(domain, requirements, options = {}) {
         model: config.openai.models.specialist,
         textFormat: specialistTextFormat,
         maxOutputTokens: 2000,
+        timeoutMs: 30_000,
         mockResponseFactory: async () => MOCK_BRIEFS[domain]?.(requirements) ?? { domain, analysis: "", constraints: [], sizing_notes: [], recommendations: [], licensing_flags: [], risks: [] }
       })
   );

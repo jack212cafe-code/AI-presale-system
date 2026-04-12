@@ -278,7 +278,7 @@ export async function runSolutionAgent(requirements, options = {}) {
 
       // Logic Enforcement: Self-Correction Loop
       let attempts = 0;
-      const MAX_ATTEMPTS = 3;
+      const MAX_ATTEMPTS = 1;
 
       while (attempts < MAX_ATTEMPTS) {
         if (!Array.isArray(currentOutput.options) || currentOutput.options.length === 0) break;
