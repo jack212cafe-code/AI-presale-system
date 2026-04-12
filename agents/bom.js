@@ -6,12 +6,46 @@ import { config } from "../lib/config.js";
 import { withAgentLogging } from "../lib/logging.js";
 import { generateJsonWithOpenAI } from "../lib/openai.js";
 import { validateBom } from "../lib/validation.js";
+import { retrieveKnowledgeByVendorFilter } from "../lib/supabase.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const BOM_MAX_TOKENS = 1200;
 const BOM_CALL_TIMEOUT_MS = 25_000;
+const KB_TIMEOUT_MS = 20_000;
+const KB_CHARS_LIMIT = 3500;
+
+function extractVerifiedModels(chunks) {
+  const models = new Set();
+  const pattern = /\b([A-Z]{1,4}\d{2,5}[A-Za-z0-9]{0,5})\b/gi;
+  for (const chunk of chunks) {
+    const text = `${chunk?.title ?? ""} ${chunk?.content ?? ""}`;
+    for (const match of text.matchAll(pattern)) {
+      models.add(match[1].toUpperCase());
+    }
+  }
+  return Array.from(models).slice(0, 40);
+}
+
+function buildVendorKbContext(chunks) {
+  if (!chunks.length) return "";
+
+  let kbText = chunks
+    .map((chunk) => `### ${chunk.title}\n${chunk.content}`)
+    .join("\n\n");
+
+  if (kbText.length > KB_CHARS_LIMIT) {
+    kbText = kbText.slice(0, KB_CHARS_LIMIT) + "\n...[truncated]";
+  }
+
+  const verifiedModels = extractVerifiedModels(chunks);
+  const verifiedLine = verifiedModels.length > 0
+    ? `\n\n[VERIFIED MODELS]\n${verifiedModels.join(", ")}`
+    : "\n\n[VERIFIED MODELS]\nNo explicit model number was found in KB. Use generic product families and require distributor verification for the exact SKU.";
+
+  return `\n\n[PRODUCT KNOWLEDGE BASE]\nUse ONLY the products and specs found below. Do not invent model numbers, capacity tiers, or obsolete generations.\n\n${kbText}${verifiedLine}`;
+}
 
 async function callBomWithTimeout({ systemPrompt, userPrompt, model, textFormat }) {
   const result = await generateJsonWithOpenAI({
@@ -106,6 +140,18 @@ export async function runBomAgent(solution, options = {}) {
   const selected = solution.options[solution.selected_option ?? 0];
   const scale = options.requirements?.scale ?? {};
   const vendorStack = selected?.vendor_stack ?? [];
+  const kbFetch = async () => {
+    if (!vendorStack.length) return [];
+    return Promise.race([
+      retrieveKnowledgeByVendorFilter(vendorStack, 4),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("BOM KB retrieval timeout")), KB_TIMEOUT_MS))
+    ]);
+  };
+
+  const kbChunks = await kbFetch().catch((error) => {
+    throw new Error(`BOM KB retrieval failed: ${error.message}`);
+  });
+  const kbContext = buildVendorKbContext(kbChunks);
 
   const vendorEnforcement = vendorStack.length > 0
     ? `\n\n[VENDOR ENFORCEMENT]\nThis BOM MUST use ONLY these vendors as specified in the selected solution: ${vendorStack.join(", ")}. Do NOT substitute any vendor. Every hardware row must come from this vendor list.`
@@ -137,7 +183,8 @@ export async function runBomAgent(solution, options = {}) {
   }
 
   const bomRules = [
-    "Use only the current solution and specialist directives.",
+    "Use only the current solution, specialist directives, and the verified KB products below.",
+    "Every product row should be grounded in the KB. Prefer exact verified model numbers from the KB.",
     "Do not reference prior chats, prior projects, or previous customer names.",
     "Return a practical BOM with concise rows, quantities, and notes.",
     "If a model number is uncertain, say it must be verified with the distributor instead of inventing one."
@@ -149,9 +196,9 @@ export async function runBomAgent(solution, options = {}) {
   let output;
   try {
     output = await withAgentLogging(
-      { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: 0 },
+      { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: kbChunks.length },
       () => callBomWithTimeout({
-        systemPrompt: `${prompt}\n\n[BOM RULES]\n- ${bomRules}${vendorEnforcement}${specialistContext}`,
+        systemPrompt: `${prompt}\n\n[BOM RULES]\n- ${bomRules}${vendorEnforcement}${specialistContext}${kbContext}`,
         userPrompt,
         model,
         textFormat: bomTextFormat
@@ -160,9 +207,9 @@ export async function runBomAgent(solution, options = {}) {
   } catch (err1) {
     console.warn(`[bom] attempt 1 failed (${err1.message}) — retrying with recovery prompt`);
     output = await withAgentLogging(
-      { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: 0 },
+      { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: kbChunks.length },
       () => callBomWithTimeout({
-        systemPrompt: `${prompt}\n\n[RECOVERY]\nThe previous attempt failed validation or timed out.\n- Return valid JSON only.\n- Include at least 5 rows.\n- Keep descriptions short and specific.\n- Do not mention prior chats or old projects.${vendorEnforcement}${specialistContext}`,
+        systemPrompt: `${prompt}\n\n[RECOVERY]\nThe previous attempt failed validation or timed out.\n- Return valid JSON only.\n- Include at least 5 rows.\n- Keep descriptions short and specific.\n- Do not mention prior chats or old projects.${vendorEnforcement}${specialistContext}${kbContext}`,
         userPrompt,
         model,
         textFormat: bomTextFormat
