@@ -255,6 +255,13 @@ async function sendMessage(text) {
       }
     }
 
+    if (buffer.trim()) {
+      try {
+        const event = JSON.parse(buffer.trim().slice(6));
+        if (event.type === "done") payload = event;
+      } catch (e) { console.warn("[SSE parse]", e); }
+    }
+
     stopLoadingBubble();
     if (!payload) { showError("ไม่ได้รับข้อมูลจาก server"); setStage("ready"); return; }
     if (payload.ok === false || payload.stage === "error") {
