@@ -13,6 +13,21 @@ import { groundBom } from "../lib/grounding.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const BOM_MAX_TOKENS = 1500;
+const BOM_CALL_TIMEOUT_MS = 25_000;
+const MAX_KB_CONTEXT_CHARS = 3000;
+
+async function callBomWithTimeout({ systemPrompt, userPrompt, model, textFormat }) {
+  const result = await Promise.race([
+    generateJsonWithOpenAI({ systemPrompt, userPrompt, model, textFormat, maxOutputTokens: BOM_MAX_TOKENS }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("BOM call timeout")), BOM_CALL_TIMEOUT_MS))
+  ]);
+  if (!Array.isArray(result.output?.rows) || result.output.rows.length === 0) {
+    throw new Error("BOM returned empty rows");
+  }
+  return result;
+}
+
 async function loadPrompt() {
   const promptPath = path.join(__dirname, "_prompts", "bom.md");
   try {
@@ -201,15 +216,14 @@ export async function runBomAgent(solution, options = {}) {
         }
       }
       const modelListLine = kbModelSet.size > 0
-        ? `\n\n[VERIFIED MODELS IN KB — ใช้เฉพาะ model เหล่านี้เท่านั้น ห้ามใช้ model อื่นจาก training data]\n${[...kbModelSet].join(", ")}`
-        : `\n\n[KB ไม่มีข้อมูล model สำหรับ vendor นี้ — ทุก hardware description ต้องใช้ "ยืนยัน model กับ distributor" แทน model number]`;
-      kbContext = `\n\n[PRODUCT KNOWLEDGE BASE]\nข้อมูล spec จาก datasheet ปัจจุบัน — ใช้ข้อมูลนี้แทน training data สำหรับ model number, CPU generation, RAM type, และ NVMe spec:\n\n${kbChunks.map(c => `### ${c.title}\n${c.content}`).join("\n\n")}${modelListLine}`;
-    } else {
-      kbContext = `\n\n[KB ว่างเปล่าสำหรับ vendor นี้ — ห้ามระบุ model number ใดๆ จาก training data ทั้งสิ้น เขียน "ยืนยัน model กับ distributor" แทนทุก hardware row]`;
+        ? `\n\n[VERIFIED MODELS IN KB — ใช้เฉพาะ model เหล่านี้เท่านั้น]\n${[...kbModelSet].join(", ")}`
+        : `\n\n[KB ไม่มีข้อมูล model — ใช้ "ยืนยัน model กับ distributor" แทน model number]`;
+      let rawKb = kbChunks.map(c => `### ${c.title}\n${c.content}`).join("\n\n");
+      if (rawKb.length > MAX_KB_CONTEXT_CHARS) rawKb = rawKb.slice(0, MAX_KB_CONTEXT_CHARS) + "\n...[truncated]";
+      kbContext = `\n\n[PRODUCT KNOWLEDGE BASE]\n${rawKb}${modelListLine}`;
     }
   } catch (kbError) {
-    console.warn(`[bom] KB retrieval failed — BOM will be generated without grounding data: ${kbError.message}`);
-    kbContext = `\n\n[KB UNAVAILABLE — ห้ามระบุ model number ใดๆ จาก training data ทั้งสิ้น เขียน "ยืนยัน model กับ distributor" แทนทุก hardware row]`;
+    console.warn(`[bom] KB retrieval failed: ${kbError.message}`);
   }
 
   const vendorEnforcement = vendorStack.length > 0
@@ -236,24 +250,24 @@ export async function runBomAgent(solution, options = {}) {
     specialistContext = `\n\n[SPECIALIST DIRECTIVES]\nThe following are MANDATORY sizing orders from domain experts. These DIRECTIVES override all KB grounding rules and must be reflected exactly in the BOM descriptions.\n\n${sections.join("\n\n")}`;
   }
 
-  const output = await withAgentLogging(
-    {
-      agentName: "bom",
-      projectId: options.projectId,
-      modelUsed: config.openai.models.bom,
-      input: { selected_option: selected, scale },
-      kbChunksInjected: kbChunks.length
-    },
-    () =>
-      generateJsonWithOpenAI({
-        systemPrompt: prompt + vendorEnforcement + specialistContext + kbContext,
-        userPrompt: JSON.stringify({ selected_option: selected, scale, requirements: options.requirements }, null, 2),
-        model: config.openai.models.bom,
-        textFormat: bomTextFormat,
-        maxOutputTokens: 4000,
-        mockResponseFactory: async () => buildMockBom(solution)
-      })
-  );
+  const model = config.openai.models.bom;
+  const userPrompt = JSON.stringify({ selected_option: selected, scale, requirements: options.requirements }, null, 2);
+
+  // Attempt 1: full prompt with KB context
+  let output;
+  try {
+    output = await withAgentLogging(
+      { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: kbChunks.length },
+      () => callBomWithTimeout({ systemPrompt: prompt + vendorEnforcement + specialistContext + kbContext, userPrompt, model, textFormat: bomTextFormat })
+    );
+  } catch (err1) {
+    console.warn(`[bom] attempt 1 failed (${err1.message}) — retrying without KB`);
+    // Attempt 2: no KB context
+    output = await withAgentLogging(
+      { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: 0 },
+      () => callBomWithTimeout({ systemPrompt: prompt + vendorEnforcement + specialistContext, userPrompt, model, textFormat: bomTextFormat })
+    );
+  }
 
   const bomJson = groundBom(sanitizeBomOutput(output), kbChunks);
   return validateBom(bomJson);

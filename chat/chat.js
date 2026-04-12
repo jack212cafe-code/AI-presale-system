@@ -13,6 +13,22 @@ let currentUser = null;
 let loadingTimer = null;
 let loadingBubble = null;
 let lastUserMessage = null;
+let bomTimerStart = null;
+let bomTimerInterval = null;
+
+function startBomTimer(stageLabelEl) {
+  if (bomTimerInterval) return;
+  bomTimerStart = Date.now();
+  bomTimerInterval = setInterval(() => {
+    const secs = Math.floor((Date.now() - bomTimerStart) / 1000);
+    if (stageLabelEl) stageLabelEl.textContent = `กำลังสร้าง BOM... (${secs}s)`;
+  }, 1000);
+}
+
+function stopBomTimer() {
+  if (bomTimerInterval) { clearInterval(bomTimerInterval); bomTimerInterval = null; }
+  bomTimerStart = null;
+}
 
 async function apiFetch(url, options = {}) {
   const response = await fetch(url, {
@@ -148,7 +164,13 @@ function updateLoadingProgress(step, total, label) {
   const stageLabel = loadingBubble.querySelector("#pipeline-stage-label");
   const steps = loadingBubble.querySelectorAll(".pipeline-step");
   if (fill) fill.style.width = `${Math.round((step / total) * 100)}%`;
-  if (stageLabel) stageLabel.textContent = label;
+  if (label && label.includes("BOM") && label.includes("สร้าง")) {
+    if (stageLabel) stageLabel.textContent = `${label} (0s)`;
+    startBomTimer(stageLabel);
+  } else {
+    stopBomTimer();
+    if (stageLabel) stageLabel.textContent = label;
+  }
   steps.forEach((s, i) => {
     s.classList.remove("active", "done");
     if (i < step - 1) s.classList.add("done");
@@ -159,6 +181,7 @@ function updateLoadingProgress(step, total, label) {
 function stopLoadingBubble() {
   if (loadingTimer) { clearInterval(loadingTimer); loadingTimer = null; }
   if (loadingBubble) { loadingBubble.remove(); loadingBubble = null; }
+  stopBomTimer();
 }
 
 async function sendMessage(text) {
