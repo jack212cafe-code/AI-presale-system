@@ -345,7 +345,10 @@ export async function importRawDocuments(options = {}) {
       progress_percent: candidateFiles.length === 0 ? 20 : 10 + Math.round(((index + 1) / candidateFiles.length) * 25),
       message: `Parsing ${path.basename(absolutePath)}`
     });
-    const entry = await buildDocumentEntry(absolutePath, normalizedOptions);
+    const entry = await buildDocumentEntry(absolutePath, normalizedOptions).catch(err => {
+      console.error(`[kb-import] failed to parse ${absolutePath}:`, err.message);
+      return null;
+    });
     if (entry) {
       documents.push(entry);
     }

@@ -151,6 +151,7 @@ function startKnowledgeImportJob(jobId, sourceFile) {
       });
     })
     .catch((error) => {
+      console.error("[kb-import] job failed:", error);
       updateJob(jobId, {
         status: "failed",
         stage: "failed",
@@ -697,6 +698,7 @@ export async function appHandler(request, response) {
       clearInterval(heartbeat);
 
       if (result.ok === false || result.stage === "error") {
+        console.error("[chat] returning error result:", result);
         sendEvent({ type: "done", ok: false, error: result.text, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage });
       } else {
         sendEvent({ type: "done", ok: true, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage, text: result.text, created: result.created, grounding_warnings: result.grounding_warnings ?? 0 });
