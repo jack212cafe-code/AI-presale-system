@@ -199,6 +199,7 @@ function normalizeBomRows(bomJson) {
 }
 
 export async function runBomAgent(solution, options = {}) {
+  const _t = Date.now();
   const prompt = await loadPrompt();
   const selected = solution.options[solution.selected_option ?? 0];
   const scale = options.requirements?.scale ?? {};
@@ -211,9 +212,12 @@ export async function runBomAgent(solution, options = {}) {
     ]);
   };
 
+  console.log(`[bom] kb-fetch started vendors=${vendorStack.join(",")}`);
   const kbChunks = await kbFetch().catch((error) => {
+    console.warn(`[bom] +${Date.now()-_t}ms kb-fetch failed: ${error.message}`);
     throw new Error(`BOM KB retrieval failed: ${error.message}`);
   });
+  console.log(`[bom] +${Date.now()-_t}ms kb-fetch done chunks=${kbChunks.length}`);
   const kbContext = buildVendorKbContext(kbChunks);
 
   const vendorEnforcement = vendorStack.length > 0
@@ -257,6 +261,7 @@ export async function runBomAgent(solution, options = {}) {
   const model = config.openai.models.bom;
   const userPrompt = JSON.stringify({ selected_option: selected, scale, requirements: options.requirements }, null, 2);
 
+  console.log(`[bom] +${Date.now()-_t}ms attempt-1 started`);
   let output;
   try {
     output = await withAgentLogging(
@@ -268,8 +273,11 @@ export async function runBomAgent(solution, options = {}) {
         textFormat: bomTextFormat
       })
     );
+    console.log(`[bom] +${Date.now()-_t}ms attempt-1 done rows=${output?.rows?.length}`);
   } catch (err1) {
-    console.warn(`[bom] attempt 1 failed (${err1.message}) — retrying with recovery prompt`);
+    console.warn(`[bom] +${Date.now()-_t}ms attempt-1 failed (${err1.message}) — retrying`);
+    options.onProgress?.(1, 4, "กำลังสร้าง BOM (retry)...");
+    console.log(`[bom] +${Date.now()-_t}ms attempt-2 started`);
     output = await withAgentLogging(
       { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: kbChunks.length },
       () => callBomWithTimeout({
@@ -279,6 +287,7 @@ export async function runBomAgent(solution, options = {}) {
         textFormat: bomTextFormat
       })
     );
+    console.log(`[bom] +${Date.now()-_t}ms attempt-2 done rows=${output?.rows?.length}`);
   }
 
   const repaired = normalizeBomRows(groundBom(sanitizeBomOutput(output), kbChunks));

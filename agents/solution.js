@@ -70,15 +70,22 @@ const solutionTextFormat = {
 export async function _getKnowledgeWithDeps(requirements, deps) {
   const { embedQueryFn, retrieveVectorFn, retrieveLocalFn, hasSupabaseFn, hasEmbeddingFn } = deps;
   const useCases = Array.isArray(requirements.use_cases) ? requirements.use_cases : [];
+  const _t = Date.now();
 
   if (hasSupabaseFn() && hasEmbeddingFn()) {
+    console.log(`[solution:kb] vector-path started useCases=${useCases.length}`);
     try {
       const results = await Promise.allSettled(
         useCases.map(async (useCase) => {
+          console.log(`[solution:kb] embed started "${useCase}"`);
           const embedding = await embedQueryFn(useCase);
-          return retrieveVectorFn(embedding, 5);
+          console.log(`[solution:kb] +${Date.now()-_t}ms embed done, vector-search started "${useCase}"`);
+          const r = await retrieveVectorFn(embedding, 5);
+          console.log(`[solution:kb] +${Date.now()-_t}ms vector-search done "${useCase}" hits=${r.length}`);
+          return r;
         })
       );
+      console.log(`[solution:kb] +${Date.now()-_t}ms vector-path done`);
 
       const fulfilled = results.filter((r) => r.status === "fulfilled").flatMap((r) => r.value);
 
@@ -264,6 +271,8 @@ export async function runSolutionAgent(requirements, options = {}) {
       }
     },
     async () => {
+      const _t0 = Date.now();
+      console.log(`[solution] openai-1 started`);
       let currentOutput = await generateJsonWithOpenAI({
         systemPrompt: `${prompt}\n\n[PROJECT OBJECTIVE]\n${projectObjective}\n\n[KNOWLEDGE BASE]\n${knowledge
           .map((entry) => `${entry.title}\n${entry.content}`)
@@ -275,6 +284,7 @@ export async function runSolutionAgent(requirements, options = {}) {
         timeoutMs: 60_000,
         mockResponseFactory: async () => buildMockSolution(requirements, knowledge, retrieval_mode)
       });
+      console.log(`[solution] +${Date.now()-_t0}ms openai-1 done`);
 
       // Logic Enforcement: Self-Correction Loop
       let attempts = 0;
@@ -299,8 +309,10 @@ export async function runSolutionAgent(requirements, options = {}) {
           .join("\n");
 
         logger.warn("solution.validation_failed", { attempt: attempts, errors: validationErrors });
+        console.log(`[solution] +${Date.now()-_t0}ms self-correction attempt=${attempts}`);
 
         await new Promise(r => setTimeout(r, 500 * attempts));
+        console.log(`[solution] +${Date.now()-_t0}ms openai-${attempts+1} started`);
         currentOutput = await generateJsonWithOpenAI({
           systemPrompt: `${prompt}\n\n[CRITICAL TECHNICAL ERRORS FOUND]\n${validationErrors}\n\nPlease correct these technical errors. Ensure M365 limits, Windows Server socket/core minimums, and storage capacity units (TB/GB) are strictly followed.\n\n[PROJECT OBJECTIVE]\n${projectObjective}\n\n[KNOWLEDGE BASE]\n${knowledge
             .map((entry) => `${entry.title}\n${entry.content}`)
@@ -311,6 +323,7 @@ export async function runSolutionAgent(requirements, options = {}) {
           maxOutputTokens: 5000,
           timeoutMs: 60_000,
         });
+        console.log(`[solution] +${Date.now()-_t0}ms openai-${attempts+1} done`);
       }
 
       return currentOutput;

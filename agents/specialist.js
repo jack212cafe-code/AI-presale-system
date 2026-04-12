@@ -217,6 +217,8 @@ const DOMAIN_KB_KEYWORDS = {
 };
 
 async function retrieveKbForDomain(domain, requirements) {
+  const _t = Date.now();
+  console.log(`[kb:${domain}] started`);
   const chunks = new Map();
 
   // 1. Vendor-filtered: pull spec sheets relevant to this domain
@@ -234,12 +236,14 @@ async function retrieveKbForDomain(domain, requirements) {
           const seen = new Set();
           vendorChunks = [];
           for (const kw of keywords) {
+            console.log(`[kb:${domain}] +${Date.now()-_t}ms ilike kw="${kw}"`);
             const { data } = await client.from("knowledge_base")
               .select("source_key, title, content, category, metadata")
               .ilike("source_key", `%${kw}%`)
               .not("content", "ilike", "-- % of %")
               .order("source_key", { ascending: true })
               .limit(4);
+            console.log(`[kb:${domain}] +${Date.now()-_t}ms ilike done kw="${kw}" rows=${data?.length ?? 0}`);
             for (const c of data ?? []) {
               if (!seen.has(c.source_key)) { seen.add(c.source_key); vendorChunks.push(c); }
             }
@@ -264,6 +268,7 @@ async function retrieveKbForDomain(domain, requirements) {
     }
   } catch { /* KB unavailable */ }
 
+  console.log(`[kb:${domain}] +${Date.now()-_t}ms done chunks=${chunks.size}`);
   return Array.from(chunks.values());
 }
 
@@ -282,16 +287,21 @@ export function getActiveSpecialists(requirements) {
 }
 
 export async function runSpecialistAgent(domain, requirements, options = {}) {
+  const _t = Date.now();
+  console.log(`[specialist:${domain}] started`);
   const promptPath = path.join(__dirname, "_prompts", `${domain}.md`);
   const prompt = await readFile(promptPath, "utf8");
 
+  console.log(`[specialist:${domain}] +${Date.now()-_t}ms kb-fetch started`);
   const kbChunks = await retrieveKbForDomain(domain, requirements);
+  console.log(`[specialist:${domain}] +${Date.now()-_t}ms kb-fetch done chunks=${kbChunks.length}`);
 
   let kbContext = "";
   if (kbChunks.length > 0) {
     kbContext = `\n\n[PRODUCT KNOWLEDGE BASE]\nSpec sheet data — use these model numbers, capacities, and specs as ground truth. Do NOT use training data when this conflicts:\n\n${kbChunks.map(c => `### ${c.title}\n${c.content}`).join("\n\n")}`;
   }
 
+  console.log(`[specialist:${domain}] +${Date.now()-_t}ms openai started`);
   const output = await withAgentLogging(
     {
       agentName: `specialist_${domain}`,
@@ -311,16 +321,20 @@ export async function runSpecialistAgent(domain, requirements, options = {}) {
         mockResponseFactory: async () => MOCK_BRIEFS[domain]?.(requirements) ?? { domain, analysis: "", constraints: [], sizing_notes: [], recommendations: [], licensing_flags: [], risks: [] }
       })
   );
+  console.log(`[specialist:${domain}] +${Date.now()-_t}ms openai done`);
 
   return output;
 }
 
 export async function runAllSpecialists(requirements, options = {}) {
   const domains = getActiveSpecialists(requirements);
+  const _t = Date.now();
+  console.log(`[specialists:all] started domains=${domains.join(",")}`);
 
   const results = await Promise.allSettled(
     domains.map(domain => runSpecialistAgent(domain, requirements, options))
   );
+  console.log(`[specialists:all] +${Date.now()-_t}ms all settled`);
 
   return results
     .map((result, i) => {
