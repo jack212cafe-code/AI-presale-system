@@ -217,6 +217,20 @@ function sanitizeSolution(output, knowledge) {
   };
 }
 
+export function buildSolutionMemoryContext(requirements) {
+  let memoryContext = "";
+  if (requirements.vendor_preferences) {
+    const vp = requirements.vendor_preferences;
+    if (vp.preferred?.length > 0) {
+      memoryContext += `\n\n[VENDOR PREFERENCES — HARD REQUIREMENT]\nThe customer EXPLICITLY requested these vendors. You MUST include at least one option using each preferred vendor. Do NOT propose an option that ignores all preferred vendors.\nRequired vendors: ${vp.preferred.join(", ")}\nIf you propose a 3-option list and none use the required vendors, that is a FAILURE. At minimum Option 1 must use the required vendors.`;
+    }
+    if (vp.disliked?.length > 0) {
+      memoryContext += `\n\n[VENDORS TO EXCLUDE]\nThe customer explicitly rejected these vendors — do NOT include them in any option:\n${vp.disliked.join(", ")}`;
+    }
+  }
+  return memoryContext;
+}
+
 export async function runSolutionAgent(requirements, options = {}) {
   const prompt = await loadPrompt();
   const { chunks: knowledge, retrieval_mode } = await getKnowledge(requirements);
@@ -236,22 +250,7 @@ export async function runSolutionAgent(requirements, options = {}) {
     constraintContext = `\n\n[HARD CONSTRAINTS — MUST NOT VIOLATE]\nExtracted from customer discovery. Every recommended option must satisfy all of these:\n${requirements.constraints.filter(Boolean).map(c => `- ${c}`).join("\n")}`;
   }
 
-  let memoryContext = "";
-  if (requirements.prior_rejected_options?.length > 0) {
-    const rejectedList = requirements.prior_rejected_options
-      .map(o => `${o.name} (${o.vendor_stack?.join(", ") ?? "unknown"})`)
-      .join("; ");
-    memoryContext += `\n\n[PREVIOUSLY REJECTED OPTIONS]\nThe customer previously rejected these options — avoid recommending them unless explicitly requested:\n${rejectedList}`;
-  }
-  if (requirements.vendor_preferences) {
-    const vp = requirements.vendor_preferences;
-    if (vp.preferred?.length > 0) {
-      memoryContext += `\n\n[VENDOR PREFERENCES — HARD REQUIREMENT]\nThe customer EXPLICITLY requested these vendors. You MUST include at least one option using each preferred vendor. Do NOT propose an option that ignores all preferred vendors.\nRequired vendors: ${vp.preferred.join(", ")}\nIf you propose a 3-option list and none use the required vendors, that is a FAILURE. At minimum Option 1 must use the required vendors.`;
-    }
-    if (vp.disliked?.length > 0) {
-      memoryContext += `\n\n[VENDORS TO EXCLUDE]\nThe customer explicitly rejected these vendors — do NOT include them in any option:\n${vp.disliked.join(", ")}`;
-    }
-  }
+  const memoryContext = buildSolutionMemoryContext(requirements);
 
   const output = await withAgentLogging(
     {

@@ -68,6 +68,7 @@ function setStage(stage) {
     processing: { label: "Processing", active: true, done: false },
     discovery_questions: { label: "Discovery", active: false, done: false },
     awaiting_selection: { label: "Awaiting Selection", active: false, done: false },
+    bom: { label: "BOM Ready", active: false, done: false },
     complete: { label: "Complete", active: false, done: true }
   };
   const s = map[stage] || map.ready;

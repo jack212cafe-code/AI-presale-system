@@ -8,6 +8,7 @@ import {
   listProjectsByCustomerName,
   getRejectedOptionsByCustomer
 } from "../../lib/projects.js";
+import { buildSolutionMemoryContext } from "../../agents/solution.js";
 import { getVendorPreferences, upsertVendorPreference } from "../../lib/user-preferences.js";
 
 const TEST_USER_ID = "test-user-memory-01";
@@ -102,14 +103,17 @@ describe("memory injection logic — vendor constraint building", () => {
 });
 
 describe("memory injection logic — rejected options", () => {
-  it("returns empty rejected options in local mode — no injection needed", async () => {
-    const rejectedOptions = await getRejectedOptionsByCustomer(TEST_USER_ID, TEST_CUSTOMER);
-    assert.equal(rejectedOptions.length, 0);
-    const requirements = {};
-    if (rejectedOptions.length > 0) {
-      requirements.prior_rejected_options = rejectedOptions;
-    }
-    assert.equal(requirements.prior_rejected_options, undefined);
+  it("does not inject prior rejected options into solution memory context", () => {
+    const requirements = {
+      prior_rejected_options: [
+        { name: "Old Option", vendor_stack: ["Dell"] }
+      ],
+      vendor_preferences: { preferred: ["HPE"], disliked: ["VMware"] }
+    };
+    const context = buildSolutionMemoryContext(requirements);
+    assert.ok(context.includes("HPE"));
+    assert.ok(context.includes("VMware"));
+    assert.ok(!context.includes("Old Option"));
   });
 });
 
