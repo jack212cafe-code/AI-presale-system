@@ -1054,6 +1054,7 @@ export async function appHandler(request, response) {
       });
       response.end(buffer);
     } catch (error) {
+      console.error("[export:solution]", error);
       return json(response, 500, { ok: false, error: error.message });
     }
   }
@@ -1076,6 +1077,7 @@ export async function appHandler(request, response) {
       });
       response.end(buffer);
     } catch (error) {
+      console.error("[export:spec]", error);
       return json(response, 500, { ok: false, error: error.message });
     }
   }
