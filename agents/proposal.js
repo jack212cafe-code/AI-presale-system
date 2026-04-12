@@ -119,6 +119,7 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
         ),
         model: config.openai.models.proposal,
         textFormat: proposalTextFormat,
+        timeoutMs: 45_000,
         mockResponseFactory: async () => buildMockDraft(project, solution)
       })
   );

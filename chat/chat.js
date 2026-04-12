@@ -307,7 +307,7 @@ sidebarBackdrop.addEventListener("click", () => {
 
 logoutBtn.addEventListener("click", async () => {
   if (confirm("ต้องการออกจากระบบหรือไม่?")) {
-    await apiFetch("/api/auth/logout", { method: "POST" });
+    try { await apiFetch("/api/auth/logout", { method: "POST" }); } catch {}
     window.location.replace("/login");
   }
 });

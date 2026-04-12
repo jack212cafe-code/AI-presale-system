@@ -383,6 +383,7 @@ export async function runDiscoveryAgent(intake, options = {}) {
         userPrompt,
         model: config.openai.models.discovery,
         textFormat,
+        timeoutMs: 45_000,
         mockResponseFactory: async () => buildMockRequirements(intake, mode)
       })
   );

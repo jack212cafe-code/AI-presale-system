@@ -272,6 +272,7 @@ export async function runSolutionAgent(requirements, options = {}) {
         model: config.openai.models.solution,
         textFormat: solutionTextFormat,
         maxOutputTokens: 5000,
+        timeoutMs: 60_000,
         mockResponseFactory: async () => buildMockSolution(requirements, knowledge, retrieval_mode)
       });
 
@@ -308,6 +309,7 @@ export async function runSolutionAgent(requirements, options = {}) {
           model: config.openai.models.solution,
           textFormat: solutionTextFormat,
           maxOutputTokens: 5000,
+          timeoutMs: 60_000,
         });
       }
 
