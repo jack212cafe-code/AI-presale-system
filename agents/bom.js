@@ -6,7 +6,6 @@ import { config } from "../lib/config.js";
 import { withAgentLogging } from "../lib/logging.js";
 import { generateJsonWithOpenAI } from "../lib/openai.js";
 import { validateBom } from "../lib/validation.js";
-import { persistBomJson } from "../lib/projects.js";
 import { getKnowledge } from "./solution.js";
 import { retrieveKnowledgeByVendorFilter } from "../lib/supabase.js";
 import { groundBom } from "../lib/grounding.js";
@@ -252,10 +251,5 @@ export async function runBomAgent(solution, options = {}) {
   );
 
   const bomJson = groundBom(sanitizeBomOutput(output), kbChunks);
-
-  if (options.projectId) {
-    await persistBomJson(options.projectId, bomJson);
-  }
-
   return validateBom(bomJson);
 }
