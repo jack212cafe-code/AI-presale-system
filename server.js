@@ -48,7 +48,10 @@ import { generateTorComplianceCsv, getTorExportFilename } from "./lib/tor-export
 import { getMessagesByConversation, getConversationsByProject } from "./lib/conversations.js";
 import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments, readAgentLogs } from "./lib/supabase.js";
 import { PdfExportEngine } from './lib/pdf-export.js';
+import { FinancialAnalystAgent } from "./lib/bom-export.js";
+import { buildSolutionBuffer } from "./lib/solution-export.js";
 const pdfEngine = new PdfExportEngine();
+const bomExcelAgent = new FinancialAnalystAgent();
 
 import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } from "./knowledge_base/raw-import-lib.js";
 import { upsertVendorPreference } from "./lib/user-preferences.js";
@@ -994,6 +997,52 @@ export async function appHandler(request, response) {
         "Content-Disposition": `attachment; filename="${projectId}-export.pdf"`
       });
       response.end(pdfBuffer);
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/projects\/[^/]+\/export\/bom$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const projectId = url.pathname.split("/")[3];
+    try {
+      const project = await getProjectById(projectId);
+      if (!project || !project.bom_json?.rows?.length) {
+        return json(response, 404, { ok: false, error: "BOM not found" });
+      }
+
+      const buffer = await bomExcelAgent.generateBOMBuffer(project.bom_json, projectId);
+      response.writeHead(200, {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${projectId}-bom.xlsx"`
+      });
+      response.end(buffer);
+    } catch (error) {
+      return json(response, 500, { ok: false, error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/projects\/[^/]+\/export\/solution$/)) {
+    if (!requireUserAuth(request, response)) return;
+    const projectId = url.pathname.split("/")[3];
+    try {
+      const project = await getProjectById(projectId);
+      if (!project || !project.solution_json) {
+        return json(response, 404, { ok: false, error: "Solution not found" });
+      }
+
+      const buffer = await buildSolutionBuffer({
+        project,
+        requirements: project.requirements_json,
+        solution: project.solution_json,
+        bomRows: project.bom_json?.rows ?? []
+      });
+
+      response.writeHead(200, {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Disposition": `attachment; filename="${projectId}-solution.docx"`
+      });
+      response.end(buffer);
     } catch (error) {
       return json(response, 500, { ok: false, error: error.message });
     }

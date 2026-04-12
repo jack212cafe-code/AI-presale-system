@@ -247,9 +247,9 @@ async function sendMessage(text) {
     activeProjectId = payload.project_id;
     appendAssistantBubble(payload.text, payload.stage);
     setStage(payload.stage || "ready");
-    if (payload.stage === "complete" && payload.project_id) {
-      if (payload.grounding_warnings > 0) appendGroundingBanner(payload.grounding_warnings);
-      appendDownloadButton(payload.project_id);
+    if (payload.project_id) {
+      appendActionButtons(payload.project_id, payload.stage);
+      if (payload.stage === "complete" && payload.grounding_warnings > 0) appendGroundingBanner(payload.grounding_warnings);
     }
     if (payload.conversation_id) {
       await loadProjects();
@@ -361,6 +361,115 @@ async function submitFeedback(projectId, rating, btn) {
   }
 }
 
+function exportButton(label, action, projectId) {
+  return `
+    <button class="download-btn" data-export-action="${action}" data-project-id="${encodeURIComponent(projectId)}">
+      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      ${label}
+    </button>
+  `;
+}
+
+function appendActionButtons(projectId, stage) {
+  const msg = document.createElement("div");
+  msg.className = "message";
+  const revisionStrip = `
+    <div class="revision-strip">
+      <div class="revision-label">ต้องการแก้ไข?</div>
+      <button class="revision-chip" data-action="เปลี่ยน vendor">🔄 เปลี่ยน vendor</button>
+      <button class="revision-chip" data-action="เปลี่ยน solution option">↔️ เปลี่ยน solution</button>
+      <button class="revision-chip" data-action="ปรับ requirements ใหม่">✏️ ปรับ requirements</button>
+    </div>
+  `;
+
+  const exportActions = [];
+  if (stage === "awaiting_selection") {
+    exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
+  } else if (stage === "bom") {
+    exportActions.push(exportButton("Export BOM (.xlsx)", "bom", projectId));
+    exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
+  } else if (stage === "complete") {
+    exportActions.push(exportButton("Export BOM (.xlsx)", "bom", projectId));
+    exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
+    exportActions.push(exportButton("Download Proposal (.docx)", "proposal", projectId));
+  }
+
+  if (exportActions.length === 0) return;
+
+  msg.innerHTML = `
+    <div class="message-label">Franky-Presale</div>
+    <div class="bubble assistant">
+      <div class="export-actions">${exportActions.join("")}</div>
+      <div class="rating-wrap">
+        <span class="rating-label">ประเมินคุณภาพ:</span>
+        <button class="rating-btn" data-rating="1" title="ดีมาก">👍</button>
+        <button class="rating-btn" data-rating="-1" title="ต้องปรับปรุง">👎</button>
+      </div>
+      ${revisionStrip}
+    </div>
+  `;
+
+  msg.querySelectorAll(".revision-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      sendMessage(chip.dataset.action);
+    });
+  });
+
+  msg.querySelectorAll("[data-export-action]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const projectIdDecoded = decodeURIComponent(btn.dataset.projectId || "");
+      const action = btn.dataset.exportAction;
+      if (action === "bom") downloadBOM(projectIdDecoded, btn);
+      else if (action === "solution") downloadSolution(projectIdDecoded, btn);
+      else downloadProposal(projectIdDecoded, btn);
+    });
+  });
+
+  msg.querySelectorAll(".rating-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      submitFeedback(projectId, parseInt(btn.dataset.rating), btn);
+    });
+  });
+
+  thread.appendChild(msg);
+  scrollToBottom();
+}
+
+async function downloadBinary(url, btn, filename, loadingText) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = loadingText;
+  try {
+    const response = await fetch(url, { credentials: "include" });
+    if (response.status === 404) {
+      alert("ไม่พบไฟล์ export");
+      return;
+    }
+    if (!response.ok) {
+      alert("เกิดข้อผิดพลาดในการดาวน์โหลด");
+      return;
+    }
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(blobUrl);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+async function downloadBOM(projectId, btn) {
+  await downloadBinary(`/api/projects/${projectId}/export/bom`, btn, `bom_${projectId}.xlsx`, "กำลังโหลด BOM...");
+}
+
+async function downloadSolution(projectId, btn) {
+  await downloadBinary(`/api/projects/${projectId}/export/solution`, btn, `solution_${projectId}.docx`, "กำลังโหลด Solution...");
+}
+
 function appendDownloadButton(projectId) {
   const msg = document.createElement("div");
   msg.className = "message";
@@ -459,8 +568,8 @@ async function loadConversation(projectId) {
     if (msg.role === "user") appendUserBubble(msg.content);
     else appendAssistantBubble(msg.content, conv.stage);
   });
-  if (conv.stage === "complete") { appendDownloadButton(projectId); setStage("complete"); }
-  else setStage(conv.stage || "ready");
+  appendActionButtons(projectId, conv.stage);
+  setStage(conv.stage || "ready");
 }
 
 function clearThread() { thread.innerHTML = ""; }

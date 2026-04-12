@@ -6,6 +6,7 @@ import { config } from "../lib/config.js";
 import { withAgentLogging } from "../lib/logging.js";
 import { generateJsonWithOpenAI } from "../lib/openai.js";
 import { validateBom } from "../lib/validation.js";
+import { groundBom } from "../lib/grounding.js";
 import { retrieveKnowledgeByVendorFilter } from "../lib/supabase.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -217,5 +218,5 @@ export async function runBomAgent(solution, options = {}) {
     );
   }
 
-  return validateBom(sanitizeBomOutput(output));
+  return validateBom(groundBom(sanitizeBomOutput(output), kbChunks));
 }
