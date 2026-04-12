@@ -26,6 +26,14 @@ describe("generate_questions mode", () => {
     assert.equal(typeof result.question_text, "string");
     assert.ok(result.question_text.length > 0, "question_text must be non-empty");
   });
+
+  it("returns hints as a non-empty array of strings", async () => {
+    const result = await runDiscoveryAgent(testIntake, { mode: "generate_questions" });
+    assert.ok("hints" in result, "result must have hints property");
+    assert.ok(Array.isArray(result.hints), "hints must be an array");
+    assert.ok(result.hints.length > 0, "hints must be non-empty");
+    assert.ok(result.hints.every(h => typeof h === "string"), "each hint must be a string");
+  });
 });
 
 describe("parse_answers mode", () => {

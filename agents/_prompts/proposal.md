@@ -40,6 +40,17 @@ Draft a comprehensive enterprise handoff proposal content with these fields:
 - List specific technical or commercial details the engineer MUST confirm with the customer before a formal quote can be issued.
 - Format as a "Pre-requisites for Quoting" checklist.
 
+## why_section
+
+Write a "ทำไมเราแนะนำ solution นี้" (Why We Recommend This Solution) section in formal Thai. This is inserted after the executive summary in the document.
+
+- **problem_framing**: 2-3 sentences. State the customer's core need in plain Thai language that a non-technical decision-maker can understand.
+- **why_architecture**: 3-4 bullet points. Why does this architecture type fit better than alternatives for this specific customer? Reference the customer's scale, budget, or operational constraints from the requirements.
+- **trade_offs**: 2-3 sentences. Why the non-selected options were not chosen. Keep brief — one sentence per option.
+- **risk_mitigations**: 2-3 sentences. What does this design account for that protects the customer?
+
+Write entirely in Thai. Avoid generic statements — every sentence must reference something specific about the customer's situation.
+
 ## next_steps
 - Provide actionable items with clear ownership for each step
 - Use role prefixes: "ฝ่ายขาย:" (Sales), "วิศวกร:" (Engineer), "ลูกค้า:" (Customer)

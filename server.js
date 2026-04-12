@@ -241,6 +241,15 @@ export async function appHandler(request, response) {
     return serveFile(response, path.join(__dirname, "login", "login.js"), "application/javascript; charset=utf-8");
   }
 
+  if (request.method === "GET" && url.pathname === "/pipeline") {
+    if (!requireUserAuth(request, response)) return;
+    return serveFile(response, path.join(__dirname, "pipeline", "pipeline.html"), "text/html; charset=utf-8");
+  }
+
+  if (request.method === "GET" && url.pathname === "/pipeline/pipeline.js") {
+    return serveFile(response, path.join(__dirname, "pipeline", "pipeline.js"), "application/javascript; charset=utf-8");
+  }
+
   if (request.method === "POST" && url.pathname === "/api/intake") {
     if (!requireUserAuth(request, response)) return;
     try {

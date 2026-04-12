@@ -20,7 +20,13 @@ Ask only what you genuinely need to design a proper solution. Use your domain kn
 
 If the brief already provides a data point clearly, do NOT re-ask it.
 
-Return ONLY: `{ "question_text": "..." }`
+Also return a `hints` array — 3 to 6 short Thai tips for a non-expert SI to interpret the customer's answers. Each hint should explain:
+- What answer to listen for
+- What it means for the solution design (e.g. which tier, which product, which risk)
+
+Hints must be actionable and written in plain Thai. Example hint: "ถ้าลูกค้าบอก VM เกิน 80 ตัว → แนะนำ HCI เพราะ 3-Tier จะ scale ยาก"
+
+Return ONLY: `{ "question_text": "...", "hints": ["...", "..."] }`
 
 ## Mode: parse_answers
 

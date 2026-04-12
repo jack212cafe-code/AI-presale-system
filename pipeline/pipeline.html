@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deal Pipeline — Franky-Presale</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Calibri", sans-serif; background: #F8FAFC; color: #1E293B; }
+    header { background: #1A3A5C; color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 20px; font-weight: 700; }
+    header a { color: #93C5FD; font-size: 14px; text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid #E2E8F0; padding: 0 24px; background: #fff; }
+    .tab { padding: 12px 20px; cursor: pointer; font-size: 14px; color: #64748B; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tab.active { color: #1A3A5C; border-bottom-color: #0E7490; font-weight: 600; }
+    .tab .count { background: #E2E8F0; border-radius: 10px; padding: 1px 7px; font-size: 12px; margin-left: 6px; }
+    .tab.active .count { background: #0E7490; color: #fff; }
+    .content { padding: 24px; max-width: 1000px; margin: 0 auto; }
+    .deal-list { display: flex; flex-direction: column; gap: 12px; }
+    .deal-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+    .deal-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .deal-name { font-size: 16px; font-weight: 600; color: #1A3A5C; }
+    .deal-meta { font-size: 13px; color: #64748B; margin-top: 2px; }
+    .stage-badge { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+    .stage-discovery { background: #FEF3C7; color: #92400E; }
+    .stage-solution { background: #DBEAFE; color: #1E40AF; }
+    .stage-bom { background: #D1FAE5; color: #065F46; }
+    .stage-complete { background: #F3F4F6; color: #374151; }
+    .deal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 1px solid #CBD5E1; background: #fff; cursor: pointer; color: #1E293B; }
+    .btn:hover { background: #F1F5F9; }
+    .btn-primary { background: #1A3A5C; color: #fff; border-color: #1A3A5C; }
+    .btn-primary:hover { background: #0F2640; }
+    .empty { text-align: center; padding: 48px; color: #94A3B8; font-size: 15px; }
+    .new-btn { background: #0E7490; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+    .new-btn:hover { background: #0A5F75; }
+    #error-msg { color: #DC2626; padding: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Deal Pipeline</h1>
+    <div style="display:flex;gap:16px;align-items:center">
+      <a href="/chat">+ New Deal</a>
+      <a href="/chat">Chat</a>
+    </div>
+  </header>
+  <div class="tabs" id="tabs"></div>
+  <div class="content">
+    <div id="error-msg" style="display:none"></div>
+    <div class="deal-list" id="deal-list"></div>
+  </div>
+  <script src="/pipeline/pipeline.js" type="module"></script>
+</body>
+</html>

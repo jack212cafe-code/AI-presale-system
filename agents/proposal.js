@@ -54,9 +54,20 @@ const proposalTextFormat = {
       next_steps: {
         type: "array",
         items: { type: "string" }
+      },
+      why_section: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          problem_framing: { type: "string" },
+          why_architecture: { type: "array", items: { type: "string" } },
+          trade_offs: { type: "string" },
+          risk_mitigations: { type: "string" }
+        },
+        required: ["problem_framing", "why_architecture", "trade_offs", "risk_mitigations"]
       }
     },
-    required: ["executive_summary", "solution_overview", "options_considered", "assumptions", "risks", "missing_info", "next_steps"]
+    required: ["executive_summary", "solution_overview", "options_considered", "assumptions", "risks", "missing_info", "next_steps", "why_section"]
   }
 };
 
@@ -138,7 +149,13 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
     assumptions: Array.isArray(draft.assumptions) ? draft.assumptions : [],
     risks: Array.isArray(draft.risks) ? draft.risks : [],
     missing_info: Array.isArray(draft.missing_info) ? draft.missing_info : [],
-    next_steps: Array.isArray(draft.next_steps) ? draft.next_steps : []
+    next_steps: Array.isArray(draft.next_steps) ? draft.next_steps : [],
+    why_section: draft.why_section && typeof draft.why_section === "object" ? {
+      problem_framing: String(draft.why_section.problem_framing ?? "").trim(),
+      why_architecture: Array.isArray(draft.why_section.why_architecture) ? draft.why_section.why_architecture : [],
+      trade_offs: String(draft.why_section.trade_offs ?? "").trim(),
+      risk_mitigations: String(draft.why_section.risk_mitigations ?? "").trim()
+    } : null
   };
 
   const buffer = await buildProposalBuffer({
@@ -153,7 +170,8 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
     assumptions: sanitized.assumptions,
     risks: sanitized.risks,
     missingInfo: sanitized.missing_info,
-    nextSteps: sanitized.next_steps
+    nextSteps: sanitized.next_steps,
+    whySection: sanitized.why_section
   });
 
   await writeFile(proposalPath, buffer);

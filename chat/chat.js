@@ -112,6 +112,25 @@ function appendAssistantBubble(markdown, stage) {
   return msg;
 }
 
+function appendHintsPanel(hints) {
+  if (!hints || hints.length === 0) return;
+  const details = document.createElement("details");
+  details.className = "hints-panel";
+  const summary = document.createElement("summary");
+  summary.textContent = "คำแนะนำสำหรับการฟังคำตอบ";
+  const ul = document.createElement("ul");
+  ul.className = "hints-list";
+  hints.forEach(h => {
+    const li = document.createElement("li");
+    li.textContent = h;
+    ul.appendChild(li);
+  });
+  details.appendChild(summary);
+  details.appendChild(ul);
+  thread.appendChild(details);
+  scrollToBottom();
+}
+
 function appendErrorBubble(errorText) {
   const msg = document.createElement("div");
   msg.className = "message";
@@ -246,6 +265,9 @@ async function sendMessage(text) {
     activeConversationId = payload.conversation_id;
     activeProjectId = payload.project_id;
     appendAssistantBubble(payload.text, payload.stage);
+    if (payload.stage === "discovery_questions" && payload.hints?.length > 0) {
+      appendHintsPanel(payload.hints);
+    }
     setStage(payload.stage || "ready");
     if (payload.project_id) {
       appendActionButtons(payload.project_id, payload.stage);
@@ -386,9 +408,11 @@ function appendActionButtons(projectId, stage) {
   if (stage === "bom") {
     exportActions.push(exportButton("Export BOM (.xlsx)", "bom", projectId));
     exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
+    exportActions.push(exportButton("Export Spec Sheet for Distributor (.docx)", "spec", projectId));
   } else if (stage === "complete") {
     exportActions.push(exportButton("Export BOM (.xlsx)", "bom", projectId));
     exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
+    exportActions.push(exportButton("Export Spec Sheet for Distributor (.docx)", "spec", projectId));
     exportActions.push(exportButton("Download Proposal (.docx)", "proposal", projectId));
   }
 
@@ -419,6 +443,7 @@ function appendActionButtons(projectId, stage) {
       const action = btn.dataset.exportAction;
       if (action === "bom") downloadBOM(projectIdDecoded, btn);
       else if (action === "solution") downloadSolution(projectIdDecoded, btn);
+      else if (action === "spec") downloadBinary(`/api/projects/${projectIdDecoded}/export/spec`, btn, `spec_${projectIdDecoded}.docx`, "กำลังโหลด Spec Sheet...");
       else downloadProposal(projectIdDecoded, btn);
     });
   });

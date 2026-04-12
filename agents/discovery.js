@@ -57,9 +57,13 @@ const discoveryQuestionsFormat = {
     type: "object",
     additionalProperties: false,
     properties: {
-      question_text: { type: "string" }
+      question_text: { type: "string" },
+      hints: {
+        type: "array",
+        items: { type: "string" }
+      }
     },
-    required: ["question_text"]
+    required: ["question_text", "hints"]
   }
 };
 
@@ -187,7 +191,14 @@ const discoveryTextFormat = {
 function buildMockRequirements(intake, mode) {
   if (mode === "generate_questions") {
     return {
-      question_text: "สวัสดีครับ ผมเข้าใจว่าคุณต้องการระบบโครงสร้างพื้นฐานสำหรับองค์กร ช่วยบอกรายละเอียดเพิ่มเติมได้ไหมครับ เช่น มี VM อยู่ประมาณกี่ตัว storage รวมประมาณกี่ TB จำนวน user ทั้งหมด network switch ที่ใช้อยู่เป็น 10G หรือ 25G และงบประมาณคร่าวๆ ครับ"
+      question_text: "สวัสดีครับ ผมเข้าใจว่าคุณต้องการระบบโครงสร้างพื้นฐานสำหรับองค์กร ช่วยบอกรายละเอียดเพิ่มเติมได้ไหมครับ เช่น มี VM อยู่ประมาณกี่ตัว storage รวมประมาณกี่ TB จำนวน user ทั้งหมด network switch ที่ใช้อยู่เป็น 10G หรือ 25G และงบประมาณคร่าวๆ ครับ",
+      hints: [
+        "ถ้าลูกค้าบอก VM เกิน 80 ตัว → แนะนำ HCI เพราะ 3-Tier จะ scale ยากและแพงกว่าในระยะยาว",
+        "ถ้า storage ที่ต้องการเกิน 50 TB → ควรถามว่ามี SAN/NAS อยู่แล้วหรือยัง เพื่อประเมินว่า reuse ได้ไหม",
+        "ถ้าลูกค้ามี switch แค่ 1G → HCI แบบ Ceph จะมีปัญหา storage traffic ต้องเสนอ upgrade switch ก่อน",
+        "ถ้างบต่ำกว่า 3 ล้าน → เน้นเฉพาะ core use case เดียว ไม่ควรเสนอ full-stack",
+        "ถ้าลูกค้าพูดถึง VMware → ควรถามเรื่องงบ license เพราะหลัง Broadcom ราคาขึ้น 2-3 เท่า"
+      ]
     };
   }
 

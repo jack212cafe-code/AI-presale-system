@@ -9,3 +9,4 @@ knowledge_base/seed-manifest.json
 knowledge_base/raw-manifest.json
 npm-debug.log*
 .planning/
+.aider*
