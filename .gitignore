@@ -1,3 +1,4 @@
+.worktrees/
 node_modules/
 managed-agents/.env.managed-agents
 managed-agents/sessions.json
