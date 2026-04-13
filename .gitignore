@@ -15,4 +15,6 @@ npm-debug.log*
 .session_save.md
 server-err.log
 server-out.log
+server.err.log
+server.out.log
 *.local
