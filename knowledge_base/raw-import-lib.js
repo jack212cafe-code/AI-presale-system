@@ -102,8 +102,13 @@ async function extractTextFromFile(absolutePath) {
   }
 
   if (extension === ".json") {
-    const parsed = JSON.parse(await readFile(absolutePath, "utf8"));
-    return cleanText(JSON.stringify(parsed, null, 2));
+    try {
+      const parsed = JSON.parse(await readFile(absolutePath, "utf8"));
+      return cleanText(JSON.stringify(parsed, null, 2));
+    } catch (error) {
+      console.error("[kb-import] JSON parse failed:", error.message);
+      throw new Error(`JSON parse failed: ${error.message}`);
+    }
   }
 
   if (extension === ".pdf") {
@@ -120,8 +125,13 @@ async function extractTextFromFile(absolutePath) {
 
   if (extension === ".docx") {
     const mammoth = getDependency("mammoth");
-    const result = await mammoth.extractRawText({ path: absolutePath });
-    return cleanText(result.value);
+    try {
+      const result = await mammoth.extractRawText({ path: absolutePath });
+      return cleanText(result.value);
+    } catch (error) {
+      console.error("[kb-import] DOCX parse failed:", error.message);
+      throw new Error(`DOCX parse failed: ${error.message}`);
+    }
   }
 
   if (extension === ".xlsx") {
@@ -137,45 +147,71 @@ async function extractTextFromFile(absolutePath) {
   throw new Error(`Unsupported file extension: ${extension}`);
 }
 
-async function embedText(content) {
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
+const EMBED_TIMEOUT_MS = 30000;
+const EMBED_MAX_RETRIES = 2;
+const EMBED_RETRY_DELAY_MS = 1000;
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Embedding timeout — try again");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function embeddingRequest(input) {
+  const options = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.embeddings.openAiApiKey}`
     },
-    body: JSON.stringify({
-      model: config.embeddings.model,
-      input: content
-    })
-  });
+    body: JSON.stringify({ model: config.embeddings.model, input })
+  };
 
-  if (!response.ok) {
-    throw new Error(`Embedding request failed with status ${response.status}`);
+  let lastError;
+  for (let attempt = 0; attempt <= EMBED_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      console.error(`[kb-import] embedding retry ${attempt}/${EMBED_MAX_RETRIES} after: ${lastError.message}`);
+      await new Promise((resolve) => setTimeout(resolve, EMBED_RETRY_DELAY_MS));
+    }
+    try {
+      const response = await fetchWithTimeout("https://api.openai.com/v1/embeddings", options, EMBED_TIMEOUT_MS);
+      if (!response.ok) {
+        const status = response.status;
+        if (status === 429 || status >= 500) {
+          lastError = new Error(`Embedding request failed with status ${status}`);
+          continue;
+        }
+        throw new Error(`Embedding request failed with status ${status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+      if (error.message === "Embedding timeout — try again" && attempt < EMBED_MAX_RETRIES) {
+        continue;
+      }
+      if (attempt === EMBED_MAX_RETRIES) break;
+    }
   }
+  console.error("[kb-import] embedding failed after retries:", lastError.message);
+  throw lastError;
+}
 
-  const payload = await response.json();
+async function embedText(content) {
+  const payload = await embeddingRequest(content);
   return payload.data?.[0]?.embedding ?? null;
 }
 
 async function embedTexts(contents) {
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.embeddings.openAiApiKey}`
-    },
-    body: JSON.stringify({
-      model: config.embeddings.model,
-      input: contents
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`Embedding request failed with status ${response.status}`);
-  }
-
-  const payload = await response.json();
+  const payload = await embeddingRequest(contents);
   return Array.isArray(payload.data) ? payload.data.map((item) => item.embedding ?? null) : [];
 }
 
