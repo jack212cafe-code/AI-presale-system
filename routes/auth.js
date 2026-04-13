@@ -16,7 +16,7 @@ export async function handle(request, url, response) {
       const ip = request.headers['x-forwarded-for']?.split(',')[0]?.trim()
                  || request.socket?.remoteAddress
                  || 'unknown';
-      const rl = checkLoginLimit(ip);
+      const rl = await checkLoginLimit(ip);
       if (!rl.allowed) {
         return json(response, 429, {
           ok: false,
