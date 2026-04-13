@@ -35,8 +35,9 @@ function deriveUseCases(intake) {
   if (content.includes("backup")) useCases.push("Backup & Recovery");
   if (content.includes("dr") || content.includes("disaster")) useCases.push("Disaster Recovery");
   if (content.includes("security") || content.includes("ransomware")) useCases.push("Cybersecurity");
-  if (content.includes("hci") || content.includes("hyperconverge") || content.includes("nutanix") || content.includes("simplivity") || content.includes("vxrail")) useCases.push("HCI");
-  if (content.includes("3-tier") || content.includes("3 tier") || content.includes("server") || content.includes("storage appliance") || content.includes("san") || content.includes("nas")) useCases.push("3-Tier");
+  const isHci = content.includes("hci") || content.includes("hyperconverge") || content.includes("nutanix") || content.includes("simplivity") || content.includes("vxrail");
+  if (isHci) useCases.push("HCI");
+  if (!isHci && (content.includes("3-tier") || content.includes("3 tier") || content.includes("server") || content.includes("storage appliance") || content.includes("san") || content.includes("nas"))) useCases.push("3-Tier");
 
   if (useCases.length === 0) {
     useCases.push(intake.primary_use_case);

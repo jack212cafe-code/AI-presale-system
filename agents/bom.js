@@ -255,7 +255,8 @@ export async function runBomAgent(solution, options = {}) {
     "Do not reference prior chats, prior projects, or previous customer names.",
     "Return a practical BOM with concise rows, quantities, and notes.",
     "If a model number is uncertain, say it must be verified with the distributor instead of inventing one.",
-    "Never emit bracket placeholders like [Disk from KB] or [NIC from KB]."
+    "Never emit bracket placeholders like [Disk from KB] or [NIC from KB].",
+    "For HCI use cases (S2D, VxRail, Proxmox, or any HCI cluster): minimum 3 compute nodes are required for quorum and redundancy. Never output Qty < 3 for HCI cluster compute nodes."
   ].join("\n- ");
 
   const model = config.openai.models.bom;

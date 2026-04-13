@@ -277,8 +277,8 @@ async function sendMessage(text) {
     }
     setStage(payload.stage || "ready");
     if (payload.project_id) {
-      appendActionButtons(payload.project_id, payload.stage);
-      if (payload.stage === "complete" && payload.grounding_warnings > 0) appendGroundingBanner(payload.grounding_warnings);
+      appendActionButtons(payload.project_id, payload.stage, payload.grounding_warnings || 0);
+      if (payload.grounding_warnings > 0) appendGroundingBanner(payload.grounding_warnings);
     }
     if (payload.conversation_id) {
       await loadProjects();
@@ -406,7 +406,7 @@ function exportButton(label, action, projectId) {
   `;
 }
 
-function appendActionButtons(projectId, stage) {
+function appendActionButtons(projectId, stage, groundingWarnings = 0) {
   const msg = document.createElement("div");
   msg.className = "message";
   const revisionStrip = `
@@ -418,13 +418,17 @@ function appendActionButtons(projectId, stage) {
     </div>
   `;
 
+  const bomExportBtn = groundingWarnings > 0
+    ? `<button class="download-btn" disabled title="⚠️ มี ${groundingWarnings} รายการที่ model ไม่ผ่าน grounding — กรุณาตรวจสอบก่อน export"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> ⚠️ Export BOM (ยังไม่ผ่าน grounding)</button>`
+    : exportButton("Export BOM (.xlsx)", "bom", projectId);
+
   const exportActions = [];
   if (stage === "bom") {
-    exportActions.push(exportButton("Export BOM (.xlsx)", "bom", projectId));
+    exportActions.push(bomExportBtn);
     exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
     exportActions.push(exportButton("Export Spec Sheet for Distributor (.docx)", "spec", projectId));
   } else if (stage === "complete") {
-    exportActions.push(exportButton("Export BOM (.xlsx)", "bom", projectId));
+    exportActions.push(bomExportBtn);
     exportActions.push(exportButton("Export Solution (.docx)", "solution", projectId));
     exportActions.push(exportButton("Export Spec Sheet for Distributor (.docx)", "spec", projectId));
     exportActions.push(exportButton("Download Proposal (.docx)", "proposal", projectId));
