@@ -11,3 +11,8 @@ knowledge_base/raw-manifest.json
 npm-debug.log*
 .planning/
 .aider*
+.backlog_temp.md
+.session_save.md
+server-err.log
+server-out.log
+*.local
