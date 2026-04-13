@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { config, hasEmbeddingConfig, hasSupabaseAdmin } from "../lib/config.js";
-import { withAgentLogging } from "../lib/logging.js";
+import { withAgentLogging } from "../lib/logger.js";
 import { embedQuery, generateJsonWithOpenAI } from "../lib/openai.js";
 import { formatProjectObjective } from "../lib/project-context.js";
 import { persistSolutionJson } from "../lib/projects.js";
