@@ -1,5 +1,14 @@
 import "dotenv/config";
 import { config } from "./lib/config.js";
+import * as Sentry from "@sentry/node";
+
+if (config.sentry.dsn) {
+  Sentry.init({
+    dsn: config.sentry.dsn,
+    environment: process.env.NODE_ENV || "production",
+    tracesSampleRate: 0.1
+  });
+}
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -52,8 +61,15 @@ export function createAppServer() {
 }
 
 if (isMainModule) {
-  process.on("uncaughtException", (err) => { console.error("[uncaughtException]", err); });
-  process.on("unhandledRejection", (reason) => { console.error("[unhandledRejection]", reason); });
+  process.on("uncaughtException", (err) => {
+    if (config.sentry.dsn) Sentry.captureException(err);
+    console.error("[uncaughtException]", err);
+    process.exit(1);
+  });
+  process.on("unhandledRejection", (reason) => {
+    if (config.sentry.dsn) Sentry.captureException(reason);
+    console.error("[unhandledRejection]", reason);
+  });
 
   if (!config.openai.apiKey && !config.forceLocalMode) {
     console.warn("[FATAL] OPENAI_API_KEY is not set — all AI calls will fail. Set the key or use AI_PRESALE_FORCE_LOCAL=1");
