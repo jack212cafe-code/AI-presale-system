@@ -1092,6 +1092,13 @@ export function createAppServer() {
 }
 
 if (isMainModule) {
+  process.on("uncaughtException", (err) => {
+    console.error("[uncaughtException]", err);
+  });
+  process.on("unhandledRejection", (reason) => {
+    console.error("[unhandledRejection]", reason);
+  });
+
   if (!config.openai.apiKey && !config.forceLocalMode) {
     console.warn("[FATAL] OPENAI_API_KEY is not set — all AI calls will fail. Set the key or use AI_PRESALE_FORCE_LOCAL=1");
   }

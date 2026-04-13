@@ -381,11 +381,19 @@ async function submitFeedback(projectId, rating, btn) {
         if (b.dataset.rating === "1" && rating === 1) b.classList.add("active-up");
         if (b.dataset.rating === "-1" && rating === -1) b.classList.add("active-down");
       });
+      const label = wrap.querySelector(".rating-label");
+      if (label) label.textContent = "✓ บันทึกแล้ว";
     } else {
-      alert("ไม่สามารถบันทึก Rating ได้");
+      const wrap = btn.closest(".rating-wrap");
+      const label = wrap?.querySelector(".rating-label");
+      if (label) label.textContent = "⚠ บันทึกไม่สำเร็จ";
+      else alert("ไม่สามารถบันทึก Rating ได้");
     }
   } catch (e) {
     console.error("[feedback]", e);
+    const wrap = btn.closest(".rating-wrap");
+    const label = wrap?.querySelector(".rating-label");
+    if (label) label.textContent = "⚠ เกิดข้อผิดพลาด";
   }
 }
 
