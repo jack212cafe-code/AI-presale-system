@@ -442,7 +442,8 @@ export async function appHandler(request, response) {
     }
 
     try {
-      const payload = await parseBody(request);
+      const rawPayload = await parseBody(request);
+      const payload = normalizeKnowledgeUploadPayload(rawPayload);
       console.log(`[kb-upload] Starting upload for file: ${payload.file_name}`);
       const savedFile = await saveUploadedRawDocument({
         fileName: payload.file_name,

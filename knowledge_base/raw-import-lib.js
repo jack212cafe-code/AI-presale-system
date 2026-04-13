@@ -248,6 +248,10 @@ async function buildDocumentEntry(absolutePath, options) {
   });
 
   if (chunks.length === 0) {
+    const ext = path.extname(absolutePath).toLowerCase();
+    if (ext === ".pdf") {
+      throw new Error(`No text extracted from ${relativePath}. This PDF may be image-only (scanned). Convert to text-based PDF before importing.`);
+    }
     return null;
   }
 
@@ -397,7 +401,12 @@ export async function importRawDocuments(options = {}) {
         message: `Embedding chunk ${processedChunks} of ${totalChunks}`
       });
 
-      const embeddings = await embedTexts(batch.map((chunk) => chunk.content));
+      let embeddings;
+      try {
+        embeddings = await embedTexts(batch.map((chunk) => chunk.content));
+      } catch (embErr) {
+        throw new Error(`Embedding failed at chunk ${processedChunks}/${totalChunks}: ${embErr.message}`);
+      }
       for (let index = 0; index < batch.length; index += 1) {
         records.push({
           ...batch[index],
