@@ -18,6 +18,8 @@ import { handleChatMessage } from '../lib/chat.js';
 import { requireUserAuth, json, parseBody } from './helpers.js';
 import { getSessionUserId } from '../lib/user-auth.js';
 import { requireRateLimit } from '../lib/rate-limit.js';
+import { getSessionTokenUsage } from '../lib/db/agents.js';
+import { config } from '../lib/config.js';
 
 export async function handle(request, url, response) {
   if (request.method === "POST" && url.pathname === "/api/pipeline") {
@@ -91,6 +93,16 @@ export async function handle(request, url, response) {
       const payload = await parseBody(request);
       if (!payload.message || typeof payload.message !== "string" || !payload.message.trim()) {
         return json(response, 400, { ok: false, error: "message is required" }), true;
+      }
+      if (payload.project_id) {
+        const tokenUsage = await getSessionTokenUsage(payload.project_id);
+        const budget = config.openai.sessionTokenBudget;
+        if (tokenUsage >= budget) {
+          return json(response, 429, {
+            ok: false,
+            error: `Session token budget exceeded (${tokenUsage.toLocaleString()}/${budget.toLocaleString()} tokens). Start a new project to continue.`
+          }), true;
+        }
       }
       const userId = chatUserId;
 
