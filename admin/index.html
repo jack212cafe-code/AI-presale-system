@@ -65,7 +65,13 @@
     .hero p { font-size: 14.5px; color: var(--ink-dim); line-height: 1.75; max-width: 580px; }
 
     .layout { display: grid; gap: 18px; grid-template-columns: minmax(300px, 380px) 1fr; }
-    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      main { padding: 20px 14px 48px; }
+      .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      input, select, textarea { font-size: 16px; }
+      button { min-height: 44px; }
+    }
 
     .panel {
       background: var(--surface);

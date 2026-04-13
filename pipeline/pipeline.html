@@ -36,6 +36,20 @@
     .new-btn { background: #0E7490; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
     .new-btn:hover { background: #0A5F75; }
     #error-msg { color: #DC2626; padding: 16px; text-align: center; }
+
+    @media (max-width: 768px) {
+      header { padding: 12px 16px; }
+      header h1 { font-size: 17px; }
+      .tabs { padding: 0 12px; overflow-x: auto; white-space: nowrap; gap: 0; }
+      .tab { padding: 11px 14px; font-size: 13px; flex-shrink: 0; }
+      .content { padding: 16px 12px; }
+      .deal-card { padding: 14px 16px; }
+      .deal-top { flex-direction: column; gap: 8px; }
+      .deal-actions { gap: 6px; }
+      .btn { font-size: 13px; padding: 8px 14px; min-height: 44px; }
+      .btn-primary { min-height: 44px; }
+      .new-btn { min-height: 44px; padding: 10px 18px; }
+    }
   </style>
 </head>
 <body>
