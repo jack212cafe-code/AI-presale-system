@@ -163,6 +163,17 @@ function startKnowledgeImportJob(jobId, sourceFile) {
 }
 
 export async function appHandler(request, response) {
+  try {
+    return await _appHandler(request, response);
+  } catch (err) {
+    console.error("[appHandler] unhandled:", err);
+    if (!response.headersSent) {
+      try { response.writeHead(500, { "Content-Type": "application/json" }); response.end(JSON.stringify({ ok: false, error: "Internal server error" })); } catch {}
+    }
+  }
+}
+
+async function _appHandler(request, response) {
   const url = new URL(request.url ?? "/", config.publicBaseUrl);
   console.log(`[req] ${request.method} ${url.pathname}`);
 
