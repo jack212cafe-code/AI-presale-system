@@ -14,7 +14,10 @@
     "check": "node --test",
     "seed:kb": "node knowledge_base/embed.js",
     "seed:users": "node scripts/seed-users.js",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "seed": "node scripts/seed-users.js && node scripts/seed-pricing.js",
+    "check:env": "node scripts/check-env.js",
+    "check:kb": "node scripts/check-kb-coverage.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
