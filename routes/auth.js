@@ -8,10 +8,22 @@ import {
   validateUserCredentials
 } from '../lib/user-auth.js';
 import { json, parseBody } from './helpers.js';
+import { checkLoginLimit } from '../lib/rate-limit.js';
 
 export async function handle(request, url, response) {
   if (request.method === "POST" && url.pathname === "/api/auth/login") {
     try {
+      const ip = request.headers['x-forwarded-for']?.split(',')[0]?.trim()
+                 || request.socket?.remoteAddress
+                 || 'unknown';
+      const rl = checkLoginLimit(ip);
+      if (!rl.allowed) {
+        return json(response, 429, {
+          ok: false,
+          error: `Too many login attempts — please wait ${rl.retryAfterSec} seconds`,
+          retry_after_seconds: rl.retryAfterSec
+        }), true;
+      }
       const payload = await parseBody(request);
       const user = await validateUserCredentials(payload.username || "", payload.password || "");
       if (!user) {
