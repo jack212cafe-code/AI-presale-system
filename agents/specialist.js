@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { config } from "../lib/config.js";
-import { withAgentLogging } from "../lib/logging.js";
+import { withAgentLogging } from "../lib/logger.js";
 import { generateJsonWithOpenAI } from "../lib/openai.js";
 import { retrieveKnowledgeByVendorFilter, getSupabaseAdmin } from "../lib/supabase.js";
 import { getKnowledge } from "./solution.js";

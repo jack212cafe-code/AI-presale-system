@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { config } from "../lib/config.js";
 import { formatProjectObjective } from "../lib/project-context.js";
-import { withAgentLogging } from "../lib/logging.js";
+import { withAgentLogging } from "../lib/logger.js";
 import { generateJsonWithOpenAI } from "../lib/openai.js";
 import { validateRequirements } from "../lib/validation.js";
 
