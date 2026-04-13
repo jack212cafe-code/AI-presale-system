@@ -251,7 +251,7 @@ export async function runBomAgent(solution, options = {}) {
 
   const bomRules = [
     "Use only the current solution, specialist directives, and the verified KB products below.",
-    "Every product row should be grounded in the KB. Prefer exact verified model numbers from the KB.",
+    "Use the model numbers in selected_option as authoritative — do NOT override them. KB is for confirming specs and pricing only.",
     "Do not reference prior chats, prior projects, or previous customer names.",
     "Return a practical BOM with concise rows, quantities, and notes.",
     "If a model number is uncertain, say it must be verified with the distributor instead of inventing one.",

@@ -82,7 +82,7 @@ const specialistTextFormat = {
 const MOCK_BRIEFS = {
   dell_presale: (requirements) => ({
     domain: "dell_presale",
-    analysis: "3-node Dell HCI cluster sufficient for stated VM count. PowerEdge R760 recommended.",
+    analysis: "3-node Dell HCI cluster sufficient for stated VM count. PowerEdge R760xs recommended.",
     constraints: ["Minimum 3 nodes required for HCI N+1 tolerance"],
     technical_specs: {
       compute: {
@@ -279,10 +279,14 @@ function isAiWorkload(requirements) {
 }
 
 export function getActiveSpecialists(requirements) {
-  const specialists = ["dell_presale", "hpe_presale", "lenovo_presale", "neteng", "devops"];
-  if (isAiWorkload(requirements)) {
-    specialists.push("ai_eng");
-  }
+  const preferred = requirements?.vendor_preferences?.preferred ?? [];
+  const VENDOR_MAP = { dell: "dell_presale", hpe: "hpe_presale", hewlett: "hpe_presale", lenovo: "lenovo_presale" };
+  let vendorSpecialists = preferred.length > 0
+    ? [...new Set(preferred.map(v => VENDOR_MAP[v.toLowerCase()]).filter(Boolean))]
+    : [];
+  if (!vendorSpecialists.length) vendorSpecialists = ["dell_presale", "hpe_presale", "lenovo_presale"];
+  const specialists = [...vendorSpecialists, "neteng", "devops"];
+  if (isAiWorkload(requirements)) specialists.push("ai_eng");
   return specialists;
 }
 

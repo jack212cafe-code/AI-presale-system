@@ -373,8 +373,7 @@ async function submitFeedback(projectId, rating, btn) {
       method: "POST",
       body: JSON.stringify({ rating })
     });
-    if (response.ok) {
-      // Style buttons based on rating
+    if (response.ok && payload.ok) {
       const wrap = btn.closest(".rating-wrap");
       const buttons = wrap.querySelectorAll(".rating-btn");
       buttons.forEach(b => {
