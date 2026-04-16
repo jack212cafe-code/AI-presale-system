@@ -150,7 +150,7 @@ export async function handle(request, url, response) {
         console.error("[chat] returning error result:", result);
         sendEvent({ type: "done", ok: false, error: result.text, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage });
       } else {
-        sendEvent({ type: "done", ok: true, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage, text: result.text, created: result.created, grounding_warnings: result.grounding_warnings ?? 0 });
+        sendEvent({ type: "done", ok: true, conversation_id: result.conversation_id, project_id: result.project_id, stage: result.stage, text: result.text, created: result.created, grounding_warnings: result.grounding_warnings ?? 0, diagram_mermaid: result.diagram_mermaid || null });
       }
       response.end();
     } catch (error) {

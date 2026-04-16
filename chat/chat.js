@@ -55,7 +55,72 @@ function escapeHtml(value) {
 }
 
 function renderMarkdown(text) {
-  return DOMPurify.sanitize(marked.parse(text));
+  const renderer = new marked.Renderer();
+  const origCode = renderer.code.bind(renderer);
+  renderer.code = function(code, lang) {
+    if (lang === 'mermaid') {
+      return `<div class="mermaid-src" data-mermaid="${encodeURIComponent(code)}"></div>`;
+    }
+    return origCode(code, lang);
+  };
+  return DOMPurify.sanitize(marked.parse(text, { renderer }));
+}
+
+async function renderDiagram(mermaidCode, container) {
+  try {
+    const id = 'diagram-' + Date.now();
+    const { svg } = await mermaid.render(id, mermaidCode);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'diagram-container';
+    wrapper.innerHTML = svg;
+    const actions = document.createElement('div');
+    actions.className = 'diagram-actions';
+    const svgBtn = document.createElement('button');
+    svgBtn.textContent = 'Export SVG';
+    svgBtn.onclick = () => {
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'network-diagram.svg'; a.click();
+      URL.revokeObjectURL(url);
+    };
+    const pngBtn = document.createElement('button');
+    pngBtn.textContent = 'Export PNG';
+    pngBtn.onclick = () => {
+      const svgEl = wrapper.querySelector('svg');
+      const canvas = document.createElement('canvas');
+      const scale = 2;
+      canvas.width = svgEl.viewBox.baseVal.width * scale || svgEl.clientWidth * scale || 800 * scale;
+      canvas.height = svgEl.viewBox.baseVal.height * scale || svgEl.clientHeight * scale || 400 * scale;
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'network-diagram.png'; a.click();
+          URL.revokeObjectURL(url);
+        });
+      };
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(svgEl))));
+    };
+    actions.appendChild(svgBtn);
+    actions.appendChild(pngBtn);
+    wrapper.appendChild(actions);
+    container.appendChild(wrapper);
+  } catch (err) {
+    console.error('[diagram] render failed:', err);
+  }
+}
+
+function renderMermaidBlocks(bubble) {
+  bubble.querySelectorAll('.mermaid-src').forEach(async (el) => {
+    const code = decodeURIComponent(el.dataset.mermaid);
+    const parent = el.parentNode;
+    el.remove();
+    await renderDiagram(code, parent);
+  });
 }
 
 function scrollToBottom() {
@@ -88,7 +153,7 @@ function appendUserBubble(text) {
   scrollToBottom();
 }
 
-function appendAssistantBubble(markdown, stage) {
+function appendAssistantBubble(markdown, stage, diagramMermaid) {
   const msg = document.createElement("div");
   msg.className = "message";
   const bubble = document.createElement("div");
@@ -101,6 +166,10 @@ function appendAssistantBubble(markdown, stage) {
     copyBtn.classList.add("copied");
     setTimeout(() => { copyBtn.textContent = "คัดลอก"; copyBtn.classList.remove("copied"); }, 2000);
   });
+  renderMermaidBlocks(bubble);
+  if (diagramMermaid) {
+    renderDiagram(diagramMermaid, bubble);
+  }
   const label = document.createElement("div");
   label.className = "message-label";
   label.textContent = "Franky-Presale";
@@ -271,7 +340,7 @@ async function sendMessage(text) {
     }
     activeConversationId = payload.conversation_id;
     activeProjectId = payload.project_id;
-    appendAssistantBubble(payload.text, payload.stage);
+    appendAssistantBubble(payload.text, payload.stage, payload.diagram_mermaid);
     if (payload.stage === "discovery_questions" && payload.hints?.length > 0) {
       appendHintsPanel(payload.hints);
     }
