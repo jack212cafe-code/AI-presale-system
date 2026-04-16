@@ -1,6 +1,5 @@
 import { normalizeKnowledgeDeletePayload, normalizeKnowledgeUploadPayload } from '../lib/admin-kb.js';
 import {
-  LOCAL_USERS,
   buildUserSessionCookie,
   buildExpiredUserSessionCookie,
   createUserSession,
@@ -257,9 +256,7 @@ export async function handle(request, url, response) {
     try {
       const client = getSupabaseAdmin();
       if (!client) {
-        return json(response, 200, { ok: true, users: LOCAL_USERS.map(u => ({
-          id: u.username, username: u.username, display_name: u.display_name, role: u.role ?? "engineer"
-        })) }), true;
+        return json(response, 200, { ok: true, users: [] });
       }
       const { data, error } = await client
         .from("users")
