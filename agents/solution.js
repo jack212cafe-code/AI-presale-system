@@ -12,6 +12,7 @@ import { retrieveKnowledgeFromVector } from "../lib/supabase.js";
 import { retrieveLocalKnowledge } from "../knowledge_base/shared.js";
 import { validateSolutionOption } from "../lib/sizing-validator.js";
 import { logger } from "../lib/logger.js";
+import { getWikiPagesForRequirements } from "../lib/db/wiki.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -259,6 +260,16 @@ export async function runSolutionAgent(requirements, options = {}) {
 
   const memoryContext = buildSolutionMemoryContext(requirements);
 
+  let wikiContext = "";
+  try {
+    const wikiPages = await getWikiPagesForRequirements(requirements);
+    if (wikiPages.length > 0) {
+      wikiContext = `\n\n[WIKI CONTEXT]\nProduct overview for positioning decisions (use [KNOWLEDGE BASE] for detailed specs):\n${wikiPages.map(p => `- **${p.product_name}** (${p.vendor}, ${p.category}): ${p.overview} Positioning: ${p.positioning}`).join("\n")}`;
+    }
+  } catch (err) {
+    console.error("[solution:wiki] failed to load wiki context:", err.message);
+  }
+
   const output = await withAgentLogging(
     {
       agentName: "solution_design",
@@ -274,7 +285,7 @@ export async function runSolutionAgent(requirements, options = {}) {
       const _t0 = Date.now();
       console.log(`[solution] openai-1 started`);
       let currentOutput = await generateJsonWithOpenAI({
-        systemPrompt: `${prompt}\n\n[PROJECT OBJECTIVE]\n${projectObjective}\n\n[KNOWLEDGE BASE]\n${knowledge
+        systemPrompt: `${prompt}\n\n[PROJECT OBJECTIVE]\n${projectObjective}${wikiContext}\n\n[KNOWLEDGE BASE]\n${knowledge
           .map((entry) => `${entry.title}\n${entry.content}`)
           .join("\n\n")}${specialistContext}${constraintContext}${memoryContext}`,
         userPrompt: JSON.stringify(requirements, null, 2),
@@ -314,7 +325,7 @@ export async function runSolutionAgent(requirements, options = {}) {
         await new Promise(r => setTimeout(r, 500 * attempts));
         console.log(`[solution] +${Date.now()-_t0}ms openai-${attempts+1} started`);
         currentOutput = await generateJsonWithOpenAI({
-          systemPrompt: `${prompt}\n\n[CRITICAL TECHNICAL ERRORS FOUND]\n${validationErrors}\n\nPlease correct these technical errors. Ensure M365 limits, Windows Server socket/core minimums, and storage capacity units (TB/GB) are strictly followed.\n\n[PROJECT OBJECTIVE]\n${projectObjective}\n\n[KNOWLEDGE BASE]\n${knowledge
+          systemPrompt: `${prompt}\n\n[CRITICAL TECHNICAL ERRORS FOUND]\n${validationErrors}\n\nPlease correct these technical errors. Ensure M365 limits, Windows Server socket/core minimums, and storage capacity units (TB/GB) are strictly followed.\n\n[PROJECT OBJECTIVE]\n${projectObjective}${wikiContext}\n\n[KNOWLEDGE BASE]\n${knowledge
             .map((entry) => `${entry.title}\n${entry.content}`)
             .join("\n\n")}${specialistContext}${constraintContext}${memoryContext}`,
           userPrompt: `Previous incorrect output:\n${JSON.stringify(currentOutput)}\n\nRequirements:\n${JSON.stringify(requirements, null, 2)}`,

@@ -7,6 +7,7 @@ import { withAgentLogging } from "../lib/logger.js";
 import { generateJsonWithOpenAI } from "../lib/openai.js";
 import { retrieveKnowledgeByVendorFilter, getSupabaseAdmin } from "../lib/supabase.js";
 import { getKnowledge } from "./solution.js";
+import { getWikiPagesByVendor } from "../lib/db/wiki.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -305,6 +306,20 @@ export async function runSpecialistAgent(domain, requirements, options = {}) {
     kbContext = `\n\n[PRODUCT KNOWLEDGE BASE]\nSpec sheet data — use these model numbers, capacities, and specs as ground truth. Do NOT use training data when this conflicts:\n\n${kbChunks.map(c => `### ${c.title}\n${c.content}`).join("\n\n")}`;
   }
 
+  let wikiContext = "";
+  try {
+    const vendorMap = { dell_presale: "Dell", hpe_presale: "HPE", lenovo_presale: "Lenovo" };
+    const vendorName = vendorMap[domain];
+    if (vendorName) {
+      const wikiPages = await getWikiPagesByVendor(vendorName);
+      if (wikiPages.length > 0) {
+        wikiContext = `\n\n[WIKI CONTEXT]\nProduct line overview (use [PRODUCT KNOWLEDGE BASE] for detailed specs):\n${wikiPages.map(p => `- **${p.product_name}**: ${p.overview} Specs: ${p.key_specs}`).join("\n")}`;
+      }
+    }
+  } catch (err) {
+    console.error(`[specialist:${domain}:wiki] failed:`, err.message);
+  }
+
   console.log(`[specialist:${domain}] +${Date.now()-_t}ms openai started`);
   const output = await withAgentLogging(
     {
@@ -316,7 +331,7 @@ export async function runSpecialistAgent(domain, requirements, options = {}) {
     },
     () =>
       generateJsonWithOpenAI({
-        systemPrompt: prompt + kbContext,
+        systemPrompt: prompt + wikiContext + kbContext,
         userPrompt: JSON.stringify(requirements, null, 2),
         model: config.openai.models.specialist,
         textFormat: specialistTextFormat,

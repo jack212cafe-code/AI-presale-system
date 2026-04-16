@@ -18,6 +18,8 @@ import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } f
 import { orgUserManager } from '../lib/org-user-manager.js';
 import { listCorrections, aggregateCorrectionsToKb } from '../lib/corrections.js';
 import { getAdminFeedbackSummary } from '../lib/projects.js';
+import { listWikiPages, deleteWikiPage as deleteWikiPageDb } from '../lib/db/wiki.js';
+import { generateWikiPageFromText } from '../lib/wiki-generator.js';
 import { requireRole, requireUserAuth, json, parseBody } from './helpers.js';
 
 function startKnowledgeImportJob(jobId, sourceFile) {
@@ -347,6 +349,135 @@ export async function handle(request, url, response) {
       json(response, 200, { ok: true });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/admin/wiki/pages") {
+    if (!requireRole(request, response, ["admin"])) return true;
+    try {
+      const pages = await listWikiPages();
+      json(response, 200, { ok: true, pages });
+    } catch (error) {
+      json(response, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/wiki/generate") {
+    if (!requireRole(request, response, ["admin"])) return true;
+    try {
+      const { source_file } = await parseBody(request);
+      if (!source_file) return json(response, 400, { ok: false, error: "source_file required" }), true;
+      const jobId = createJob({
+        status: "queued",
+        stage: "extracting",
+        progress_percent: 0,
+        message: `Generating wiki page for ${source_file}`,
+        source_file
+      });
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const RAW_BASE = path.resolve(process.cwd(), "knowledge_base/raw");
+      const fullPath = path.join(RAW_BASE, source_file);
+      (async () => {
+        try {
+          updateJob(jobId, { stage: "extracting", progress_percent: 20, message: "Reading document text" });
+          const buf = await fs.readFile(fullPath);
+          const ext = path.extname(fullPath).toLowerCase();
+          let text = "";
+          if (ext === ".pdf") {
+            const pdfParse = (await import("pdf-parse")).default;
+            text = (await pdfParse(buf)).text;
+          } else if (ext === ".docx") {
+            const mammoth = (await import("mammoth")).default;
+            text = (await mammoth.extractRawText({ buffer: buf })).value;
+          } else if (ext === ".md" || ext === ".txt") {
+            text = buf.toString("utf-8");
+          } else {
+            throw new Error(`Unsupported file type: ${ext}`);
+          }
+          updateJob(jobId, { stage: "generating", progress_percent: 50, message: "Calling LLM to generate wiki page" });
+          const sourceDocumentKeys = [source_file];
+          const result = await generateWikiPageFromText({ extractedText: text, fileName: path.basename(fullPath), sourceDocumentKeys });
+          updateJob(jobId, { status: "completed", stage: "completed", progress_percent: 100, message: "Wiki page generated", result: { product_name: result.page?.product_name } });
+        } catch (error) {
+          console.error("[wiki-gen] job failed:", error);
+          updateJob(jobId, { status: "failed", stage: "failed", progress_percent: 100, message: error.message, error: error.message });
+        }
+      })();
+      json(response, 202, { ok: true, message: "Wiki generation started", job_id: jobId });
+    } catch (error) {
+      json(response, 400, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/wiki/generate-all") {
+    if (!requireRole(request, response, ["admin"])) return true;
+    try {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const RAW_BASE = path.resolve(process.cwd(), "knowledge_base/raw");
+      const SUPPORTED = [".pdf", ".docx", ".md", ".txt"];
+      const entries = await fs.readdir(RAW_BASE, { withFileTypes: true });
+      const files = [];
+      for (const entry of entries) {
+        if (entry.isFile() && SUPPORTED.includes(path.extname(entry.name).toLowerCase())) {
+          files.push(entry.name);
+        }
+        if (entry.isDirectory() && entry.name === "uploads") {
+          const uploads = await fs.readdir(path.join(RAW_BASE, "uploads"), { withFileTypes: true });
+          for (const u of uploads) {
+            if (u.isFile() && SUPPORTED.includes(path.extname(u.name).toLowerCase())) {
+              files.push(`uploads/${u.name}`);
+            }
+          }
+        }
+      }
+      const jobId = createJob({ status: "queued", stage: "scanning", progress_percent: 0, message: `Found ${files.length} documents`, total: files.length });
+      (async () => {
+        let generated = 0;
+        for (let i = 0; i < files.length; i++) {
+          try {
+            const rel = files[i];
+            const fullPath = path.join(RAW_BASE, rel);
+            const buf = await fs.readFile(fullPath);
+            const ext = path.extname(fullPath).toLowerCase();
+            let text = "";
+            if (ext === ".pdf") {
+              const pdfParse = (await import("pdf-parse")).default;
+              text = (await pdfParse(buf)).text;
+            } else if (ext === ".docx") {
+              const mammoth = (await import("mammoth")).default;
+              text = (await mammoth.extractRawText({ buffer: buf })).value;
+            } else {
+              text = buf.toString("utf-8");
+            }
+            updateJob(jobId, { stage: "generating", progress_percent: Math.round(((i + 1) / files.length) * 100), message: `Generating ${rel} (${i + 1}/${files.length})` });
+            await generateWikiPageFromText({ extractedText: text, fileName: path.basename(fullPath), sourceDocumentKeys: [rel] });
+            generated++;
+          } catch (err) {
+            console.error(`[wiki-gen-all] skipped ${files[i]}: ${err.message}`);
+          }
+        }
+        updateJob(jobId, { status: "completed", stage: "completed", progress_percent: 100, message: `Generated ${generated} wiki pages`, result: { generated } });
+      })();
+      json(response, 202, { ok: true, message: "Batch wiki generation started", job_id: jobId, total_documents: files.length });
+    } catch (error) {
+      json(response, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (request.method === "DELETE" && url.pathname.startsWith("/api/admin/wiki/pages/")) {
+    if (!requireRole(request, response, ["admin"])) return true;
+    try {
+      const pageId = url.pathname.slice("/api/admin/wiki/pages/".length);
+      const result = await deleteWikiPageDb(pageId);
+      json(response, 200, { ok: true, deleted: result.deleted });
+    } catch (error) {
+      json(response, 400, { ok: false, error: error.message });
     }
     return true;
   }

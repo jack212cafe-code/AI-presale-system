@@ -4,7 +4,7 @@ import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises"
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { config, hasEmbeddingConfig } from "../lib/config.js";
+import { config, hasEmbeddingConfig, hasOpenAi } from "../lib/config.js";
 import { upsertKnowledgeBase } from "../lib/supabase.js";
 import { logger } from "../lib/logger.js";
 import { chunkText, inferMetadata } from "./shared.js";
@@ -470,6 +470,26 @@ export async function importRawDocuments(options = {}) {
     progress_percent: 100,
     message: "Import completed"
   });
+
+  if (options.autoGenerateWiki && hasOpenAi()) {
+    try {
+      const { generateWikiPageFromText } = await import("../lib/wiki-generator.js");
+      for (const document of documents) {
+        if (document.chunks.length > 0) {
+          const fullText = document.chunks.map(c => c.content).join("\n\n");
+          const sourceKeys = document.chunks.map(c => c.source_key);
+          await generateWikiPageFromText({
+            extractedText: fullText,
+            fileName: path.basename(document.relativePath),
+            sourceDocumentKeys: sourceKeys
+          }).catch(err => console.error(`[kb-import:wiki] skipped ${document.relativePath}:`, err.message));
+        }
+      }
+    } catch (wikiErr) {
+      console.error("[kb-import:wiki] wiki generation failed:", wikiErr.message);
+    }
+  }
+
   return {
     ok: true,
     mode: "upserted",
