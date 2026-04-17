@@ -400,6 +400,8 @@ export async function importRawDocuments(options = {}) {
     }
   };
 
+  const embeddingReady = hasEmbeddingConfig();
+  console.log(`[kb-import] start embeddingReady=${embeddingReady} validateOnly=${normalizedOptions.validateOnly} sourceFiles=${JSON.stringify(normalizedOptions.sourceFiles)}`);
   reportProgress({
     status: "running",
     stage: "scanning",
@@ -407,6 +409,7 @@ export async function importRawDocuments(options = {}) {
     message: "Scanning raw documents"
   });
   const candidateFiles = await collectRawCandidateFiles(normalizedOptions.sourceFiles);
+  console.log(`[kb-import] found ${candidateFiles.length} candidate files: ${candidateFiles.map(f => path.basename(f)).join(', ')}`);
   const documents = [];
 
   for (let index = 0; index < candidateFiles.length; index += 1) {
@@ -428,7 +431,7 @@ export async function importRawDocuments(options = {}) {
 
   const manifest = {
     generated_at: new Date().toISOString(),
-    provider: hasEmbeddingConfig() ? config.embeddings.provider : "disabled",
+    provider: embeddingReady ? config.embeddings.provider : "disabled",
     raw_file_count: candidateFiles.length,
     document_count: documents.length,
     chunk_count: documents.reduce((total, document) => total + document.chunks.length, 0),
@@ -443,13 +446,15 @@ export async function importRawDocuments(options = {}) {
   reportProgress({
     status: "running",
     stage: "manifest",
-    progress_percent: normalizedOptions.validateOnly || !hasEmbeddingConfig() ? 100 : 40,
+    progress_percent: normalizedOptions.validateOnly || !embeddingReady ? 100 : 40,
     message: "Prepared document manifest"
   });
 
-  if (normalizedOptions.validateOnly || !hasEmbeddingConfig()) {
+  if (normalizedOptions.validateOnly || !embeddingReady) {
+    console.log(`[kb-import] exiting validate-only mode (validateOnly=${normalizedOptions.validateOnly} embeddingReady=${embeddingReady}) chunks=${manifest.chunk_count}`);
     return { ok: true, mode: "validate-only", manifest };
   }
+  console.log(`[kb-import] starting embeddings for ${manifest.chunk_count} chunks across ${manifest.document_count} documents`);
 
   const records = [];
   const totalChunks = documents.reduce((total, document) => total + document.chunks.length, 0);
