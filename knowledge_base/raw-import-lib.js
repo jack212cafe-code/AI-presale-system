@@ -366,7 +366,7 @@ export async function collectRawCandidateFiles(sourceFiles = null) {
 
   if (Array.isArray(sourceFiles) && sourceFiles.length > 0) {
     files = sourceFiles.map((relativePath) => {
-      const normalized = String(relativePath || "").replace(/\\/g, "/").replace(/^uploads\//, "");
+      const normalized = String(relativePath || "").replace(/\\/g, "/");
       return path.join(rawDir, normalized);
     });
   } else {
