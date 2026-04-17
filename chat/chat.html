@@ -766,117 +766,84 @@
 
     <!-- FRANKY MASCOT -->
     <div class="sidebar-mascot">
-      <svg viewBox="0 0 64 106" width="60" height="106" xmlns="http://www.w3.org/2000/svg" overflow="visible" aria-label="Franky mascot">
+      <svg viewBox="0 0 64 88" width="64" height="88" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-label="Franky mascot">
         <defs>
-          <linearGradient id="fk-beskar" x1="0.2" y1="0" x2="0.8" y2="1">
-            <stop offset="0%" stop-color="#DCDCDC"/>
-            <stop offset="55%" stop-color="#B0B0B0"/>
-            <stop offset="100%" stop-color="#787878"/>
-          </linearGradient>
-          <linearGradient id="fk-helm" x1="0.1" y1="0" x2="0.9" y2="1">
-            <stop offset="0%" stop-color="#E4E4E4"/>
-            <stop offset="60%" stop-color="#ADADAD"/>
-            <stop offset="100%" stop-color="#707070"/>
-          </linearGradient>
-          <linearGradient id="fk-chest" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#D0D0D0"/>
-            <stop offset="100%" stop-color="#888888"/>
-          </linearGradient>
-          <linearGradient id="fk-leg" x1="0.2" y1="0" x2="0.8" y2="1">
-            <stop offset="0%" stop-color="#C8C8C8"/>
-            <stop offset="100%" stop-color="#818181"/>
-          </linearGradient>
           <filter id="fk-glow">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur"/>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-
         <g class="franky-body">
-          <!-- CAPE (behind body) -->
-          <path d="M22,46 Q10,56 8,80 Q10,82 14,80 Q18,66 22,60 Z" fill="#1A1A2E" opacity="0.85"/>
-          <path d="M42,46 Q54,56 56,80 Q54,82 50,80 Q46,66 42,60 Z" fill="#1A1A2E" opacity="0.85"/>
+          <!-- ANTENNA -->
+          <rect x="30" y="5" width="4" height="11" fill="#CC1100"/>
+          <rect class="franky-eye" x="25" y="1" width="14" height="9" rx="4" fill="#0033AA" filter="url(#fk-glow)"/>
 
-          <!-- HELMET DOME -->
-          <path d="M14,40 Q12,26 14,16 Q18,2 32,2 Q46,2 50,16 Q52,26 50,40 Z" fill="url(#fk-helm)" stroke="#888" stroke-width="0.6"/>
-          <!-- Helmet ridge top crest -->
-          <path d="M28,2 Q32,0 36,2 Q33,5 32,6 Q31,5 28,2 Z" fill="#C0C0C0"/>
-          <!-- Helmet side guards -->
-          <path d="M14,40 L14,46 Q14,50 18,50 L21,50 L21,40" fill="#B4B4B4" stroke="#999" stroke-width="0.4"/>
-          <path d="M50,40 L50,46 Q50,50 46,50 L43,50 L43,40" fill="#B4B4B4" stroke="#999" stroke-width="0.4"/>
-          <!-- Brow ridge -->
-          <path d="M16,26 Q32,22 48,26" stroke="#909090" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          <!-- T-Visor dark face plate -->
-          <rect x="16" y="27" width="32" height="17" rx="2" fill="#0E0E16"/>
-          <!-- T-Visor horizontal eye slit -->
-          <rect x="17" y="28" width="30" height="6" rx="1.5" fill="#070712"/>
-          <!-- Visor glow line -->
-          <path class="franky-eye" d="M19,31 Q32,29.5 45,31" stroke="#4ADE80" stroke-width="1.2" fill="none" stroke-linecap="round" filter="url(#fk-glow)" opacity="0.8"/>
-          <!-- T-Visor vertical center strip -->
-          <rect x="28.5" y="27" width="7" height="17" rx="1.5" fill="#0E0E16"/>
-          <!-- Chin guard -->
-          <path d="M20,44 L44,44 L43,51 L21,51 Z" fill="#C4C4C4" stroke="#999" stroke-width="0.4"/>
-          <!-- Chin detail line -->
-          <path d="M25,47 Q32,46 39,47" stroke="#AAAAAA" stroke-width="1" fill="none"/>
+          <!-- HEAD outer (red border) -->
+          <rect x="8" y="14" width="48" height="38" fill="#CC1100"/>
+          <!-- HEAD face (white) -->
+          <rect x="11" y="17" width="42" height="32" fill="#FFFFFF"/>
 
-          <!-- NECK / GORGET -->
-          <rect x="25" y="51" width="14" height="7" rx="3" fill="#8A8A8A" stroke="#666" stroke-width="0.5"/>
+          <!-- LEFT EYE socket -->
+          <rect x="15" y="21" width="14" height="14" fill="#0033AA"/>
+          <rect x="16" y="22" width="12" height="12" fill="#FFFFFF"/>
+          <rect class="franky-eye" x="19" y="25" width="6" height="6" fill="#0033AA"/>
+          <rect x="19" y="25" width="3" height="3" fill="#FFFFFF"/>
 
-          <!-- LEFT PAULDRON -->
-          <path d="M4,54 Q2,46 8,44 L21,44 L21,58 Q13,60 4,54 Z" fill="url(#fk-beskar)" stroke="#888" stroke-width="0.5"/>
-          <path d="M5,50 Q11,47 19,46" stroke="#D0D0D0" stroke-width="1" fill="none" opacity="0.7"/>
-          <!-- RIGHT PAULDRON -->
-          <path d="M60,54 Q62,46 56,44 L43,44 L43,58 Q51,60 60,54 Z" fill="url(#fk-beskar)" stroke="#888" stroke-width="0.5"/>
-          <path d="M59,50 Q53,47 45,46" stroke="#D0D0D0" stroke-width="1" fill="none" opacity="0.7"/>
+          <!-- RIGHT EYE socket -->
+          <rect x="35" y="21" width="14" height="14" fill="#0033AA"/>
+          <rect x="36" y="22" width="12" height="12" fill="#FFFFFF"/>
+          <rect class="franky-eye" x="39" y="25" width="6" height="6" fill="#0033AA"/>
+          <rect x="39" y="25" width="3" height="3" fill="#FFFFFF"/>
 
-          <!-- LEFT ARM (upper) -->
-          <rect x="4" y="57" width="14" height="17" rx="5" fill="url(#fk-beskar)" stroke="#888" stroke-width="0.5"/>
-          <!-- Left vambrace -->
-          <rect x="5" y="74" width="12" height="13" rx="4" fill="#AAAAAA" stroke="#777" stroke-width="0.5"/>
-          <!-- Left gauntlet -->
-          <rect x="6" y="87" width="10" height="7" rx="3" fill="#848484" stroke="#666" stroke-width="0.4"/>
+          <!-- HEAD side bolts -->
+          <rect x="8" y="28" width="5" height="5" fill="#FFFFFF"/>
+          <rect x="51" y="28" width="5" height="5" fill="#FFFFFF"/>
 
-          <!-- RIGHT ARM (upper) -->
-          <rect x="46" y="57" width="14" height="17" rx="5" fill="url(#fk-beskar)" stroke="#888" stroke-width="0.5"/>
-          <!-- Right vambrace -->
-          <rect x="47" y="74" width="12" height="13" rx="4" fill="#AAAAAA" stroke="#777" stroke-width="0.5"/>
-          <!-- Right gauntlet -->
-          <rect x="48" y="87" width="10" height="7" rx="3" fill="#848484" stroke="#666" stroke-width="0.4"/>
+          <!-- MOUTH (pixel teeth grin) -->
+          <rect x="21" y="38" width="22" height="8" fill="#CC1100"/>
+          <rect x="22" y="39" width="4" height="6" fill="#FFFFFF"/>
+          <rect x="27" y="39" width="4" height="6" fill="#FFFFFF"/>
+          <rect x="32" y="39" width="4" height="6" fill="#FFFFFF"/>
+          <rect x="37" y="39" width="4" height="6" fill="#FFFFFF"/>
 
-          <!-- CHEST PLATE -->
-          <path d="M21,58 L43,58 L45,76 Q45,78 43,78 L21,78 Q19,78 19,76 Z" fill="url(#fk-chest)" stroke="#888" stroke-width="0.5"/>
-          <!-- Chest center keel -->
-          <rect x="30" y="59" width="4" height="18" rx="2" fill="#C8C8C8"/>
-          <!-- Chest left accent -->
-          <path d="M23,63 L29,61" stroke="#D0D0D0" stroke-width="1" fill="none" opacity="0.8"/>
-          <!-- Chest right accent -->
-          <path d="M41,63 L35,61" stroke="#D0D0D0" stroke-width="1" fill="none" opacity="0.8"/>
-          <!-- Status lights -->
-          <circle class="franky-eye" cx="24" cy="70" r="2.2" fill="#4ADE80" filter="url(#fk-glow)"/>
-          <circle cx="40" cy="70" r="2.2" fill="#F59E0B"/>
-          <!-- Lower chest panel -->
-          <rect x="23" y="73" width="18" height="4" rx="1.5" fill="#ADADAD" stroke="#999" stroke-width="0.3"/>
+          <!-- NECK -->
+          <rect x="26" y="52" width="12" height="6" fill="#0033AA"/>
 
-          <!-- BELLY PLATE -->
-          <rect x="23" y="78" width="18" height="7" rx="2.5" fill="#BABABA" stroke="#888" stroke-width="0.4"/>
+          <!-- BODY (blue) -->
+          <rect x="20" y="58" width="24" height="16" fill="#0033AA"/>
+          <rect x="20" y="58" width="3" height="16" fill="#FFFFFF"/>
+          <rect x="41" y="58" width="3" height="16" fill="#FFFFFF"/>
 
-          <!-- UTILITY BELT -->
-          <rect x="19" y="85" width="26" height="6" rx="2" fill="#4A3108"/>
-          <!-- Belt buckle -->
-          <rect x="28" y="84" width="8" height="8" rx="1.5" fill="#8B6914"/>
-          <rect x="30" y="86" width="4" height="4" rx="0.8" fill="#5C4009"/>
-          <!-- Belt pouches -->
-          <rect x="19.5" y="85.5" width="6" height="5" rx="1.2" fill="#6B4A10"/>
-          <rect x="38.5" y="85.5" width="6" height="5" rx="1.2" fill="#6B4A10"/>
+          <!-- NECKTIE -->
+          <rect x="28" y="58" width="8" height="5" fill="#CC1100"/>
+          <rect x="30" y="63" width="4" height="7" fill="#CC1100"/>
+          <rect x="27" y="69" width="10" height="4" fill="#CC1100"/>
 
-          <!-- LEFT THIGH -->
-          <rect x="21" y="91" width="11" height="11" rx="4" fill="url(#fk-leg)" stroke="#888" stroke-width="0.5"/>
-          <!-- RIGHT THIGH -->
-          <rect x="32" y="91" width="11" height="11" rx="4" fill="url(#fk-leg)" stroke="#888" stroke-width="0.5"/>
-          <!-- Left shin -->
-          <rect x="22" y="102" width="9" height="4" rx="2" fill="#9A9A9A" stroke="#777" stroke-width="0.4"/>
-          <!-- Right shin -->
-          <rect x="33" y="102" width="9" height="4" rx="2" fill="#9A9A9A" stroke="#777" stroke-width="0.4"/>
+          <!-- LED status -->
+          <rect class="franky-eye" x="22" y="65" width="5" height="5" fill="#44DD88" filter="url(#fk-glow)"/>
+
+          <!-- LEFT ARM + FIST -->
+          <rect x="8" y="58" width="12" height="14" fill="#CC1100"/>
+          <rect x="8" y="70" width="12" height="6" fill="#FFFFFF"/>
+
+          <!-- RIGHT ARM + FIST -->
+          <rect x="44" y="58" width="12" height="14" fill="#CC1100"/>
+          <rect x="44" y="70" width="12" height="6" fill="#FFFFFF"/>
+
+          <!-- BRIEFCASE (right hand) -->
+          <rect x="52" y="68" width="12" height="10" fill="#0033AA"/>
+          <rect x="52" y="68" width="12" height="10" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+          <rect x="55" y="65" width="6" height="5" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+          <rect x="52" y="73" width="12" height="2" fill="#FFFFFF"/>
+          <rect x="57" y="68" width="2" height="10" fill="#FFFFFF"/>
+
+          <!-- LEGS -->
+          <rect x="23" y="74" width="8" height="8" fill="#0033AA"/>
+          <rect x="33" y="74" width="8" height="8" fill="#0033AA"/>
+
+          <!-- FEET -->
+          <rect x="20" y="80" width="13" height="5" fill="#CC1100"/>
+          <rect x="31" y="80" width="13" height="5" fill="#CC1100"/>
         </g>
       </svg>
       <div class="sidebar-mascot-name">Franky</div>
