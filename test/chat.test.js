@@ -27,7 +27,7 @@ after(() => {
 });
 
 async function makeAuthenticatedRequest(method, path, body) {
-  const token = createUserSession("test-user-id", "Test User");
+  const token = await createUserSession("test-user-id", "Test User");
   const cookie = buildUserSessionCookie(token);
   const opts = {
     method,

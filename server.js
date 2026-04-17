@@ -17,6 +17,7 @@ import { handle as handleHealth } from './routes/health.js';
 import { handle as handleStatic } from './routes/static.js';
 import { handle as handleAuth } from './routes/auth.js';
 import { handle as handleAdmin } from './routes/admin.js';
+import { handle as handleSuperadmin } from './routes/superadmin.js';
 import { handle as handleProjects } from './routes/projects.js';
 import { handle as handleChat } from './routes/chat.js';
 import { handle as handleTor } from './routes/tor.js';
@@ -47,6 +48,7 @@ async function _appHandler(request, response) {
   if (await handleHealth(request, url, response)) return;
   if (await handleAuth(request, url, response)) return;
   if (await handleAdmin(request, url, response)) return;
+  if (await handleSuperadmin(request, url, response)) return;
   if (await handleProjects(request, url, response)) return;
   if (await handleChat(request, url, response)) return;
   if (await handleTor(request, url, response)) return;

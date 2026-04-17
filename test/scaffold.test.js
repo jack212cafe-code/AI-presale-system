@@ -29,8 +29,8 @@ const { chunkText, inferMetadata, loadSeedEntries } = await import("../knowledge
 const { normalizeIntakePayload } = await import("../lib/intake.js");
 const { createUserSession, buildUserSessionCookie } = await import("../lib/user-auth.js");
 
-function makeAuthCookie() {
-  return buildUserSessionCookie(createUserSession("test-user-id", "Test User"));
+async function makeAuthCookie() {
+  return buildUserSessionCookie(await createUserSession("test-user-id", "Test User"));
 }
 
 async function loadFixture(name) {
@@ -209,7 +209,7 @@ test("intake API accepts valid minimal payload and returns local project record"
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: makeAuthCookie()
+        Cookie: await makeAuthCookie()
       },
       body: JSON.stringify({
         customer_name: "Partner Velocity",
@@ -246,7 +246,7 @@ test("intake API rejects invalid payload with actionable validation error", asyn
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: makeAuthCookie()
+        Cookie: await makeAuthCookie()
       },
       body: JSON.stringify({
         customer_name: "Partner Velocity",
@@ -280,7 +280,7 @@ test("intake analyze API returns discovery output immediately", async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: makeAuthCookie()
+        Cookie: await makeAuthCookie()
       },
       body: JSON.stringify({
         customer_name: "SSWP",
@@ -368,7 +368,7 @@ test("intake API returns 400 when body is empty", async () => {
   try {
     const response = await fetch(`${baseUrl}/api/intake`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: makeAuthCookie() },
+      headers: { "Content-Type": "application/json", Cookie: await makeAuthCookie() },
       body: "{}"
     });
 
@@ -392,7 +392,7 @@ test("solution API returns 400 when project_id is missing", async () => {
   try {
     const response = await fetch(`${baseUrl}/api/solution`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: makeAuthCookie() },
+      headers: { "Content-Type": "application/json", Cookie: await makeAuthCookie() },
       body: JSON.stringify({})
     });
 

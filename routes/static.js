@@ -31,6 +31,18 @@ export async function handle(request, url, response) {
     case "/chat/chat.js":
       serveFile(response, path.join(ROOT, "chat", "chat.js"), "application/javascript; charset=utf-8");
       return true;
+    case "/signup":
+      serveFile(response, path.join(ROOT, "signup", "index.html"), "text/html; charset=utf-8");
+      return true;
+    case "/signup/signup.js":
+      serveFile(response, path.join(ROOT, "signup", "signup.js"), "application/javascript; charset=utf-8");
+      return true;
+    case "/superadmin":
+      serveFile(response, path.join(ROOT, "superadmin", "index.html"), "text/html; charset=utf-8");
+      return true;
+    case "/superadmin/superadmin.js":
+      serveFile(response, path.join(ROOT, "superadmin", "superadmin.js"), "application/javascript; charset=utf-8");
+      return true;
     case "/login/login.js":
       serveFile(response, path.join(ROOT, "login", "login.js"), "application/javascript; charset=utf-8");
       return true;

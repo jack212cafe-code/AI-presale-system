@@ -40,7 +40,7 @@ describe("Auth endpoints", () => {
   });
 
   it("GET /api/auth/session with valid session returns authenticated:true", async () => {
-    const token = createUserSession("test-uuid-1234", "Test User");
+    const token = await createUserSession("test-uuid-1234", "Test User");
     const cookie = buildUserSessionCookie(token);
     const res = await fetch(`${baseUrl}/api/auth/session`, {
       headers: { Cookie: cookie }

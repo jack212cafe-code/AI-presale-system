@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Franky-Presale — Super Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #F9F7F4;
+      --surface: #FFFFFF;
+      --surface-2: #F5F2EE;
+      --border: rgba(60,40,20,0.1);
+      --border-strong: rgba(60,40,20,0.16);
+      --ink: #1C1410;
+      --ink-dim: #6B5E52;
+      --ink-faint: #A8998C;
+      --accent: #C96442;
+      --accent-light: #E0734F;
+      --green: #27AE60;
+      --orange: #E67E22;
+      --red: #C0392B;
+      --red-dim: rgba(192,57,43,0.08);
+      --radius: 14px;
+      --radius-sm: 9px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 44px 40px;
+      box-shadow: 0 4px 24px rgba(60,40,20,0.08);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .logo-mark {
+      width: 38px; height: 38px;
+      background: var(--accent);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 18px; height: 18px; fill: #fff; }
+    .logo-text { font-family: "Lora", serif; font-size: 18px; font-weight: 600; }
+    .logo-sub { font-size: 11.5px; color: var(--ink-faint); }
+
+    h1 { font-family: "Lora", serif; font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; color: var(--ink-dim); margin-bottom: 28px; }
+
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-dim); letter-spacing: 0.04em; margin-bottom: 7px; }
+    input {
+      width: 100%; background: var(--surface-2); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--ink); font-size: 16px;
+      padding: 12px 14px; outline: none; transition: border-color 0.15s;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--ink-faint); }
+    .field { margin-bottom: 16px; }
+
+    .error-msg {
+      display: none; background: var(--red-dim); border: 1px solid rgba(192,57,43,0.2);
+      color: var(--red); border-radius: var(--radius-sm); padding: 10px 14px;
+      font-size: 13.5px; margin-bottom: 16px;
+    }
+    .error-msg.visible { display: block; }
+
+    button[type="submit"] {
+      width: 100%; margin-top: 8px; background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600;
+      padding: 13px; cursor: pointer; transition: background 0.15s;
+    }
+    button[type="submit"]:hover { background: var(--accent-light); }
+    button[type="submit"]:disabled { opacity: 0.4; cursor: wait; }
+  </style>
+</head>
+<body>
+  <div class="card" id="login-card">
+    <div class="logo">
+      <div class="logo-mark"><svg viewBox="0 0 20 20"><path d="M10 1.5L2.5 6v8l7.5 4.5L17.5 14V6L10 1.5z"/></svg></div>
+      <div>
+        <div class="logo-text">Franky-Presale</div>
+        <div class="logo-sub">Super Admin</div>
+      </div>
+    </div>
+    <h1>Super Admin Login</h1>
+    <p class="subtitle">เข้าถึงการจัดการองค์กรทั้งหมด</p>
+    <div id="error-msg" class="error-msg"></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="password">Super Admin Password</label>
+        <input type="password" id="password" required placeholder="••••••••" />
+      </div>
+      <button type="submit" id="login-btn">เข้าสู่ระบบ</button>
+    </form>
+  </div>
+
+  <div class="card" id="dashboard-card" style="display:none;max-width:900px;">
+    <div class="logo">
+      <div class="logo-mark"><svg viewBox="0 0 20 20"><path d="M10 1.5L2.5 6v8l7.5 4.5L17.5 14V6L10 1.5z"/></svg></div>
+      <div>
+        <div class="logo-text">Franky-Presale</div>
+        <div class="logo-sub">Super Admin</div>
+      </div>
+    </div>
+    <h1>Organization Dashboard</h1>
+    <p class="subtitle" style="margin-bottom:20px;">จำนวนองค์กรทั้งหมด: <span id="org-count">—</span></p>
+    <div id="error-msg2" class="error-msg"></div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead>
+        <tr style="border-bottom:2px solid var(--border);text-align:left;">
+          <th style="padding:8px 12px;">บริษัท</th>
+          <th style="padding:8px 12px;">ผู้ใช้</th>
+          <th style="padding:8px 12px;">สถานะ</th>
+          <th style="padding:8px 12px;">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody id="orgs-tbody"></tbody>
+    </table>
+    <button onclick="logout()" style="margin-top:24px;background:none;border:1px solid var(--border);padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;">ออกจากระบบ</button>
+  </div>
+
+  <script src="/superadmin/superadmin.js"></script>
+</body>
+</html>

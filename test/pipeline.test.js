@@ -29,7 +29,7 @@ test.before(async () => {
   const { port } = server.address();
   baseUrl = `http://127.0.0.1:${port}`;
 
-  const token = createUserSession("test-pipeline-user", "Pipeline Tester");
+  const token = await createUserSession("test-pipeline-user", "Pipeline Tester");
   authCookie = buildUserSessionCookie(token);
 });
 

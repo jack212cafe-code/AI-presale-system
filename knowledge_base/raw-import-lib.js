@@ -384,7 +384,8 @@ export async function importRawDocuments(options = {}) {
     chunkSize: Number(options.chunkSize) || 1600,
     chunkOverlap: Number(options.chunkOverlap) || 200,
     sourceFiles: Array.isArray(options.sourceFiles) ? options.sourceFiles : null,
-    onProgress: typeof options.onProgress === "function" ? options.onProgress : null
+    onProgress: typeof options.onProgress === "function" ? options.onProgress : null,
+    orgId: options.orgId ?? null
   };
   const reportProgress = (patch) => {
     if (normalizedOptions.onProgress) {
@@ -485,7 +486,7 @@ export async function importRawDocuments(options = {}) {
   let savedCount = 0;
   for (let startIndex = 0; startIndex < records.length; startIndex += config.knowledgeImport.upsertBatchSize) {
     const batch = records.slice(startIndex, startIndex + config.knowledgeImport.upsertBatchSize);
-    const result = await upsertKnowledgeBase(batch);
+    const result = await upsertKnowledgeBase(batch, normalizedOptions.orgId);
     savedCount += result.count ?? batch.length;
   }
   reportProgress({

@@ -12,7 +12,7 @@ import { approveProject } from '../lib/projects.js';
 import { getMessagesByConversation, getConversationsByProject } from '../lib/conversations.js';
 import { upsertVendorPreference } from '../lib/user-preferences.js';
 import { requireUserAuth, requireRole, json, parseBody } from './helpers.js';
-import { getSessionUserId } from '../lib/user-auth.js';
+import { getSessionUserId, getSessionUser } from '../lib/user-auth.js';
 import { requireRateLimit } from '../lib/rate-limit.js';
 import { saveCorrection } from '../lib/corrections.js';
 
@@ -22,8 +22,8 @@ export async function handle(request, url, response) {
     try {
       const rawPayload = await parseBody(request);
       const intake = normalizeIntakePayload(rawPayload);
-      const userId = getSessionUserId(request);
-      const result = await createProjectRecord(intake, userId);
+      const user = getSessionUser(request);
+      const result = await createProjectRecord(intake, user.userId, user.orgId);
 
       json(response, 201, {
         ok: true,
@@ -43,8 +43,8 @@ export async function handle(request, url, response) {
     try {
       const rawPayload = await parseBody(request);
       const intake = normalizeIntakePayload(rawPayload);
-      const userId = getSessionUserId(request);
-      const created = await createProjectRecord(intake, userId);
+      const user = getSessionUser(request);
+      const created = await createProjectRecord(intake, user.userId, user.orgId);
       const requirements = await runDiscoveryAgent(intake, {
         projectId: created.project.id
       });
@@ -77,6 +77,10 @@ export async function handle(request, url, response) {
       if (!project) {
         return json(response, 404, { ok: false, error: "Project not found" }), true;
       }
+      const user = getSessionUser(request);
+      if (project.org_id !== user.orgId) {
+        return json(response, 403, { ok: false, error: "Access denied" }), true;
+      }
       if (!project.requirements_json) {
         return json(response, 400, { ok: false, error: "Discovery must be completed before solution design" }), true;
       }
@@ -92,8 +96,8 @@ export async function handle(request, url, response) {
   if (request.method === "GET" && url.pathname === "/api/projects") {
     if (!requireUserAuth(request, response)) return true;
     try {
-      const userId = getSessionUserId(request);
-      const projects = await listProjectsByUser(userId);
+      const user = getSessionUser(request);
+      const projects = await listProjectsByUser(user.userId, user.orgId);
       json(response, 200, { ok: true, projects });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
@@ -108,6 +112,10 @@ export async function handle(request, url, response) {
       const project = await getProjectById(projectId);
       if (!project) {
         return json(response, 404, { ok: false, error: "Project not found" }), true;
+      }
+      const user = getSessionUser(request);
+      if (project.org_id !== user.orgId) {
+        return json(response, 403, { ok: false, error: "Access denied" }), true;
       }
       json(response, 200, { ok: true, project });
     } catch (error) {
@@ -124,7 +132,10 @@ export async function handle(request, url, response) {
       if (!project) {
         return json(response, 404, { ok: false, error: "Project not found" }), true;
       }
-
+      const user = getSessionUser(request);
+      if (project.org_id !== user.orgId) {
+        return json(response, 403, { ok: false, error: "Access denied" }), true;
+      }
       await approveProject(projectId);
       json(response, 200, { ok: true, project_id: projectId, human_approved: true });
     } catch (error) {
@@ -155,7 +166,8 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const conversationId = url.pathname.split("/")[3];
     try {
-      const messages = await getMessagesByConversation(conversationId);
+      const user = getSessionUser(request);
+      const messages = await getMessagesByConversation(conversationId, user.orgId);
       json(response, 200, { ok: true, messages });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
@@ -167,6 +179,14 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const projectId = url.pathname.split("/")[3];
     try {
+      const project = await getProjectById(projectId);
+      if (!project) {
+        return json(response, 404, { ok: false, error: "Project not found" }), true;
+      }
+      const user = getSessionUser(request);
+      if (project.org_id !== user.orgId) {
+        return json(response, 403, { ok: false, error: "Access denied" }), true;
+      }
       const conversations = await getConversationsByProject(projectId);
       json(response, 200, { ok: true, conversations });
     } catch (error) {
@@ -201,8 +221,12 @@ export async function handle(request, url, response) {
       if (isNaN(rating) || ![-1, 1].includes(rating)) {
         return json(response, 400, { ok: false, error: "Rating must be 1 (up) or -1 (down)" }), true;
       }
-      const userId = getSessionUserId(request);
-      const result = await recordProjectFeedback(projectId, userId, rating);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId);
+      if (!project || project.org_id !== user.orgId) {
+        return json(response, 403, { ok: false, error: "Access denied" }), true;
+      }
+      const result = await recordProjectFeedback(projectId, user.userId, rating);
       json(response, 200, { ok: result.saved });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });

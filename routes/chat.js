@@ -16,15 +16,15 @@ import { runProposalAgent } from '../agents/proposal.js';
 import { checkBudgetOverrun } from '../lib/budget.js';
 import { handleChatMessage } from '../lib/chat.js';
 import { requireUserAuth, json, parseBody } from './helpers.js';
-import { getSessionUserId } from '../lib/user-auth.js';
+import { getSessionUserId, getSessionUser } from '../lib/user-auth.js';
 import { requireRateLimit } from '../lib/rate-limit.js';
-import { getSessionTokenUsage } from '../lib/db/agents.js';
 import { config } from '../lib/config.js';
 
 export async function handle(request, url, response) {
   if (request.method === "POST" && url.pathname === "/api/pipeline") {
     if (!requireUserAuth(request, response)) return true;
-    if (!requireRateLimit(request, response, getSessionUserId(request), "pipeline")) return true;
+    const user = getSessionUser(request);
+    if (!requireRateLimit(request, response, user.userId, "pipeline")) return true;
     let projectId = null;
     let project = null;
     let stageFailed = null;
@@ -32,9 +32,7 @@ export async function handle(request, url, response) {
     try {
       const rawPayload = await parseBody(request);
       const intake = normalizeIntakePayload(rawPayload);
-      const userId = getSessionUserId(request);
-
-      const created = await createProjectRecord(intake, userId);
+      const created = await createProjectRecord(intake, user.userId, user.orgId);
       project = created.project;
       projectId = project.id;
 
@@ -87,25 +85,24 @@ export async function handle(request, url, response) {
 
   if (request.method === "POST" && url.pathname === "/api/chat") {
     if (!requireUserAuth(request, response)) return true;
-    const chatUserId = getSessionUserId(request);
-    if (!requireRateLimit(request, response, chatUserId, "pipeline")) return true;
+    const user = getSessionUser(request);
+    if (!requireRateLimit(request, response, user.userId, "pipeline")) return true;
     try {
       const payload = await parseBody(request);
       if (!payload.message || typeof payload.message !== "string" || !payload.message.trim()) {
         return json(response, 400, { ok: false, error: "message is required" }), true;
       }
       if (payload.project_id) {
-        const tokenUsage = await getSessionTokenUsage(payload.project_id);
-        const budget = config.openai.sessionTokenBudget;
-        if (tokenUsage >= budget) {
+        const { getUserMonthlyCost } = await import('../lib/db/agents.js');
+        const monthlyCost = await getUserMonthlyCost(user.userId);
+        const monthlyBudget = config.openai.userMonthlyBudget ?? 15;
+        if (monthlyCost >= monthlyBudget) {
           return json(response, 429, {
             ok: false,
-            error: `Session token budget exceeded (${tokenUsage.toLocaleString()}/${budget.toLocaleString()} tokens). Start a new project to continue.`
+            error: "You have reached your monthly usage limit."
           }), true;
         }
       }
-      const userId = chatUserId;
-
       response.writeHead(200, {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache",
@@ -134,7 +131,8 @@ export async function handle(request, url, response) {
         result = await handleChatMessage({
           conversationId: payload.conversation_id || null,
           message: payload.message,
-          userId,
+          userId: user.userId,
+          orgId: user.orgId,
           onProgress
         });
       } catch (chatError) {

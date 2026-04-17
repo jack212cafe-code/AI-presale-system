@@ -21,10 +21,11 @@ import { listWikiPages, deleteWikiPage as deleteWikiPageDb } from '../lib/db/wik
 import { generateWikiPageFromText } from '../lib/wiki-generator.js';
 import { requireRole, requireUserAuth, json, parseBody } from './helpers.js';
 
-function startKnowledgeImportJob(jobId, sourceFile) {
+function startKnowledgeImportJob(jobId, sourceFile, orgId = null) {
   importRawDocuments({
     sourceFiles: [sourceFile],
-    onProgress: (patch) => updateJob(jobId, patch)
+    onProgress: (patch) => updateJob(jobId, patch),
+    orgId
   })
     .then((result) => {
       updateJob(jobId, {
@@ -62,7 +63,7 @@ export async function handle(request, url, response) {
       if (!user || user.role !== "admin") {
         return json(response, 401, { ok: false, error: "Invalid credentials or insufficient role" }), true;
       }
-      const token = createUserSession(user.id, user.display_name, user.role);
+      const token = await createUserSession(user.id, user.display_name, user.role);
       json(
         response,
         200,
@@ -136,7 +137,10 @@ export async function handle(request, url, response) {
     try {
       const rawPayload = await parseBody(request);
       const payload = normalizeKnowledgeUploadPayload(rawPayload);
-      console.log(`[kb-upload] Starting upload for file: ${payload.file_name}`);
+      const user = getSessionUser(request);
+      const isSuperadmin = user.role === "superadmin";
+      const orgId = isSuperadmin ? null : (user.orgId ?? null);
+      console.log(`[kb-upload] Starting upload for file: ${payload.file_name} orgId=${orgId ?? 'global'}`);
       const savedFile = await saveUploadedRawDocument({
         fileName: payload.file_name,
         contentBase64: payload.content_base64,
@@ -151,7 +155,7 @@ export async function handle(request, url, response) {
         source_file: savedFile.relativePath
       });
       console.log(`[kb-upload] Job created: ${jobId}`);
-      startKnowledgeImportJob(jobId, savedFile.relativePath);
+      startKnowledgeImportJob(jobId, savedFile.relativePath, orgId);
 
       json(response, 202, {
         ok: true,
