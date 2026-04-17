@@ -337,7 +337,10 @@ export async function collectRawCandidateFiles(sourceFiles = null) {
   let files = [];
 
   if (Array.isArray(sourceFiles) && sourceFiles.length > 0) {
-    files = sourceFiles.map((relativePath) => path.join(rawDir, String(relativePath || "").replace(/\\/g, "/")));
+    files = sourceFiles.map((relativePath) => {
+      const normalized = String(relativePath || "").replace(/\\/g, "/").replace(/^uploads\//, "");
+      return path.join(rawDir, normalized);
+    });
   } else {
     files = await walkFiles(rawDir);
   }
