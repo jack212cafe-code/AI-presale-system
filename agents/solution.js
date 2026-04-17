@@ -37,6 +37,14 @@ const solutionTextFormat = {
           properties: {
             name: { type: "string" },
             architecture: { type: "string" },
+            topology: {
+              type: "string",
+              enum: ["HCI", "3-Tier", "Hybrid", "Backup-Only", "Network-Only", "Security-Only"]
+            },
+            hypervisor: {
+              type: ["string", "null"],
+              enum: ["Nutanix AHV", "VMware vSphere", "Proxmox VE", "Azure Stack HCI", "Hyper-V", "N/A", null]
+            },
             vendor_stack: {
               type: "array",
               items: { type: "string" }
@@ -51,7 +59,7 @@ const solutionTextFormat = {
             },
             estimated_tco_thb: { type: ["number", "integer", "null"] }
           },
-          required: ["name", "architecture", "vendor_stack", "rationale", "risks", "estimated_tco_thb"]
+          required: ["name", "architecture", "topology", "hypervisor", "vendor_stack", "rationale", "risks", "estimated_tco_thb"]
         }
       },
       selected_option: { type: ["integer", "null"] },
@@ -208,6 +216,16 @@ function toArray(value) {
   return [String(value).trim()];
 }
 
+function inferTopology(option) {
+  const text = `${option?.architecture ?? ""} ${(option?.vendor_stack ?? []).join(" ")}`.toLowerCase();
+  if (/\bhci\b|hyper[- ]?converged|vxrail|nutanix|simplivity|thinkagile\s*(hx|mx)|vsan|azure\s*stack\s*hci|ceph/.test(text)) return "HCI";
+  if (/3[- ]?tier|san[- ]attached|powerstore|powervault|\bde\d{4}|\bdm\d{4}|unity|me5|msa|alletra|nimble/.test(text)) return "3-Tier";
+  if (/backup|veeam|commvault|data\s*domain|storeonce/.test(text)) return "Backup-Only";
+  if (/fortigate|firewall|ngfw|siem|edr/.test(text)) return "Security-Only";
+  if (/switch|catalyst|nexus|aruba|fabric/.test(text)) return "Network-Only";
+  return "Hybrid";
+}
+
 function sanitizeSolution(output, knowledge) {
   const solution = output && typeof output === "object" ? output : {};
 
@@ -232,6 +250,8 @@ function sanitizeSolution(output, knowledge) {
         .map((option) => ({
           name: String(option.name || "Recommended Option").trim(),
           architecture: stripAIisms(String(option.architecture || "Architecture not specified").trim()),
+          topology: option.topology || inferTopology(option),
+          hypervisor: option.hypervisor ?? null,
           vendor_stack: toArray(option.vendor_stack),
           rationale: toArray(option.rationale).map(stripAIisms),
           risks: toArray(option.risks).map(stripAIisms),
@@ -333,7 +353,7 @@ export async function runSolutionAgent(requirements, options = {}) {
         const allOptionsValid = currentOutput.options.every(opt =>
           validateSolutionOption(opt, {
             user_count: requirements.scale?.user_count,
-            requested_topology: requirements.topology || (requirements.use_cases?.join(" ").toLowerCase().includes("hci") ? "HCI" : null)
+            requested_topology: opt.topology || requirements.topology || (requirements.use_cases?.join(" ").toLowerCase().includes("hci") ? "HCI" : null)
           }).valid
         );
 
@@ -344,7 +364,7 @@ export async function runSolutionAgent(requirements, options = {}) {
           .map((opt, idx) => {
             const res = validateSolutionOption(opt, {
               user_count: requirements.scale?.user_count,
-              requested_topology: requirements.topology || (requirements.use_cases?.join(" ").toLowerCase().includes("hci") ? "HCI" : null)
+              requested_topology: opt.topology || requirements.topology || (requirements.use_cases?.join(" ").toLowerCase().includes("hci") ? "HCI" : null)
             });
             return res.valid ? null : `Option ${idx + 1}: ${res.errors.join("; ")}`;
           })

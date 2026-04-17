@@ -34,6 +34,16 @@ Do not generate options mechanically. Reason through the requirement first:
 
 6. **Architecture Commitment** — Do not be vague. For every option, you must commit to a specific storage architecture (e.g., "Local NVMe", "Ceph Distributed", "SAN-Attached") and provide a one-line rationale based on network capability or performance needs.
 
+7. **Topology honesty (STRUCTURED)** — Every option MUST emit:
+   - `topology`: one of `HCI`, `3-Tier`, `Hybrid`, `Backup-Only`, `Network-Only`, `Security-Only`
+   - `hypervisor`: for HCI, one of `Nutanix AHV`, `VMware vSphere`, `Proxmox VE`, `Azure Stack HCI`, `Hyper-V`; for non-HCI, `N/A` or `null`
+
+   HARD RULE — Mislabeling HCI is a critical error:
+   - If your `vendor_stack` or `architecture` references external shared storage (PowerStore, PowerVault, **Lenovo DE-series**, **Lenovo DM-series**, Unity, MSA, ME5, Alletra, Nimble, Infinidat), `topology` MUST be `"3-Tier"` — NEVER `"HCI"`.
+   - True HCI requires distributed storage ON the compute nodes (vSAN, Nutanix AOS, Ceph, Azure Stack HCI S2D). The compute nodes themselves hold the data drives.
+   - For Lenovo: `ThinkAgile HX` = HCI (hypervisor=Nutanix AHV). `ThinkAgile MX` = HCI (hypervisor=Azure Stack HCI). `ThinkSystem SR + DE storage` = 3-Tier (NOT HCI — do NOT label it HCI even if the customer asked for HCI; either switch to ThinkAgile HX or honestly call it 3-Tier).
+   - For HCI, the `hypervisor` value drives downstream BOM decisions (especially Windows Server Edition). Never leave it ambiguous. Azure Edition licensing ONLY pairs with Azure Stack HCI.
+
 ## Knowledge Base Guidance
 
 You will be provided with a [KNOWLEDGE BASE] section containing the most relevant information from the company's internal wiki. 
@@ -107,6 +117,8 @@ Return valid JSON:
 Each option must include:
 - `name`: descriptive name
 - `architecture`: 2-3 sentences. Name specific components, tiers, and WHY this architecture fits this customer's specific scale and constraints. Never write vague sentences like "HCI platform with backup solution."
+- `topology`: REQUIRED enum — `HCI` | `3-Tier` | `Hybrid` | `Backup-Only` | `Network-Only` | `Security-Only`. Must match the actual storage architecture (see Topology honesty rule §7).
+- `hypervisor`: REQUIRED — `Nutanix AHV` | `VMware vSphere` | `Proxmox VE` | `Azure Stack HCI` | `Hyper-V` | `N/A` | null. Required non-null when topology is `HCI`.
 - `vendor_stack`: array of vendor names
 - `rationale`: array — specific reasons tied to THIS customer's requirements (reference their VM count, budget, existing infrastructure)
 - `risks`: array — real risks, not generic disclaimers
