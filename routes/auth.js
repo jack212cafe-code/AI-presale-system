@@ -107,7 +107,7 @@ export async function handle(request, url, response) {
         return json(response, 409, { ok: false, error: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว" }), true;
       }
 
-      const bcrypt = await import("bcryptjs");
+      const { default: bcrypt } = await import("bcryptjs");
       const password_hash = await bcrypt.hash(password, 10);
 
       const { data: orgData, error: orgError } = await client

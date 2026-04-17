@@ -287,7 +287,7 @@ export async function handle(request, url, response) {
       }
       const client = getSupabaseAdmin();
       if (!client) return json(response, 501, { ok: false, error: "User management requires Supabase" }), true;
-      const bcrypt = await import("bcryptjs");
+      const { default: bcrypt } = await import("bcryptjs");
       const password_hash = await bcrypt.hash(password, 12);
       const { data, error } = await client
         .from("users")
