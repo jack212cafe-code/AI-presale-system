@@ -113,10 +113,14 @@ async function extractTextFromFile(absolutePath) {
 
   if (extension === ".pdf") {
     const pdfParse = getDependency("pdf-parse");
-    const buffer = await readFile(absolutePath);
-
+    let buffer;
     try {
-      const result = await pdfParse(buffer);
+      buffer = await readFile(absolutePath);
+    } catch (err) {
+      throw new Error(`Failed to read PDF file ${absolutePath}: ${err.message}`);
+    }
+    try {
+      const result = await withTimeout(pdfParse(buffer), PARSE_TIMEOUT_MS, absolutePath);
       return cleanText(result.text);
     } catch (error) {
       throw new Error(`PDF parsing failed for ${absolutePath}: ${error.message}`);
@@ -126,17 +130,21 @@ async function extractTextFromFile(absolutePath) {
   if (extension === ".docx") {
     const mammoth = getDependency("mammoth");
     try {
-      const result = await mammoth.extractRawText({ path: absolutePath });
+      const result = await withTimeout(mammoth.extractRawText({ path: absolutePath }), PARSE_TIMEOUT_MS, absolutePath);
       return cleanText(result.value);
     } catch (error) {
-      console.error("[kb-import] DOCX parse failed:", error.message);
       throw new Error(`DOCX parse failed: ${error.message}`);
     }
   }
 
   if (extension === ".xlsx") {
     const xlsx = getDependency("xlsx");
-    const workbook = xlsx.readFile(absolutePath);
+    let workbook;
+    try {
+      workbook = xlsx.readFile(absolutePath);
+    } catch (err) {
+      throw new Error(`XLSX read failed for ${absolutePath}: ${err.message}`);
+    }
     const sheetTexts = workbook.SheetNames.map((sheetName) => {
       const csv = xlsx.utils.sheet_to_csv(workbook.Sheets[sheetName]);
       return `# Sheet: ${sheetName}\n${csv}`;
@@ -148,6 +156,19 @@ async function extractTextFromFile(absolutePath) {
 }
 
 const EMBED_TIMEOUT_MS = 30000;
+const PARSE_TIMEOUT_MS = 60000;
+
+async function withTimeout(promise, timeoutMs, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Parse timeout after ${timeoutMs}ms: ${label}`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 const EMBED_MAX_RETRIES = 2;
 const EMBED_RETRY_DELAY_MS = 1000;
 
@@ -389,7 +410,7 @@ export async function importRawDocuments(options = {}) {
       message: `Parsing ${path.basename(absolutePath)}`
     });
     const entry = await buildDocumentEntry(absolutePath, normalizedOptions).catch(err => {
-      console.error(`[kb-import] failed to parse ${absolutePath}:`, err.message);
+      console.error(`[kb-import] failed to parse ${absolutePath}:`, err);
       return null;
     });
     if (entry) {
