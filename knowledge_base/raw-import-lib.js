@@ -94,7 +94,7 @@ async function readSidecarMetadata(absolutePath) {
   }
 }
 
-async function extractTextFromFile(absolutePath) {
+export async function extractTextFromFile(absolutePath) {
   const extension = path.extname(absolutePath).toLowerCase();
 
   if (extension === ".md" || extension === ".txt" || extension === ".csv") {
