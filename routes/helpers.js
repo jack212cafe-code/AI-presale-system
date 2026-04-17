@@ -20,7 +20,7 @@ export async function serveFile(response, filePath, contentType) {
 }
 
 export async function parseBody(request) {
-  const MAX_BODY_BYTES = 20 * 1024 * 1024;
+  const MAX_BODY_BYTES = 50 * 1024 * 1024;
   const chunks = [];
   let totalBytes = 0;
   for await (const chunk of request) {
