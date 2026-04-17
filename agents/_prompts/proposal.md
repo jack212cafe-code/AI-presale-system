@@ -9,13 +9,15 @@ Draft a comprehensive enterprise handoff proposal content with these fields:
 ## executive_summary
 - 2-3 paragraphs in formal Thai
 - Paragraph 1: State the customer's business problem and IT challenge
-- Paragraph 2: Summarize the `selected_solution` — use its exact name and vendor_stack.
+- Paragraph 2: Summarize the `selected_solution` — use its exact name, vendor_stack, and if present, `solutionTopology` and `solutionHypervisor`.
 - Paragraph 3: Expected business outcome and value delivered
 - Keep concise — this is for executive decision-makers who skim
 
 ## solution_overview
 - The input contains a `selected_solution` field — this is the primary recommendation.
 - Reference `selected_solution.name`, `selected_solution.architecture`, and `selected_solution.vendor_stack` — use exact names from the input.
+- If `selected_solution.solutionTopology` is present and not "N/A", describe the physical/logical topology and why it fits the customer's scale.
+- If `selected_solution.solutionHypervisor` is present and not "N/A", describe the hypervisor choice and licensing implications for the customer.
 - Describe how each component addresses a specific customer requirement
 - Write in formal Thai technical register
 
