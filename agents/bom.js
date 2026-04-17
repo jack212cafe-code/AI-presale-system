@@ -259,6 +259,28 @@ export async function runBomAgent(solution, options = {}) {
       if (brief.constraints) directives.push(`Hard Constraints: ${brief.constraints}`);
       if (brief.licensing_flags) directives.push(`Licensing Flags: ${brief.licensing_flags}`);
 
+      if (brief.technical_specs) {
+        const ts = brief.technical_specs;
+        const specs = [];
+        if (ts.compute?.ram_gb) {
+          specs.push(`Compute/node: ${ts.compute.ram_gb}GB RAM, ${ts.compute.sockets}×${ts.compute.cores_per_socket}C CPU (${ts.compute.cpu_cores} cores total)`);
+        }
+        if (Array.isArray(ts.storage) && ts.storage.length > 0) {
+          const drives = ts.storage
+            .filter(s => s.count > 0 && s.capacity_tb > 0)
+            .map(s => `${s.count}× ${s.capacity_tb}TB ${s.type} (${s.model})`)
+            .join(", ");
+          if (drives) specs.push(`Storage/node: ${drives}`);
+        }
+        if (Array.isArray(ts.licenses) && ts.licenses.length > 0) {
+          const lics = ts.licenses.map(l => `${l.name} × ${l.quantity} ${l.unit}${l.correction ? ` (${l.correction})` : ""}`).join(", ");
+          specs.push(`Licenses: ${lics}`);
+        }
+        if (specs.length > 0) {
+          directives.push(`HARDWARE SPECS (MUST include verbatim in BOM rows): ${specs.join(" | ")}`);
+        }
+      }
+
       const content = directives.length > 0 ? directives.join("\n- ") : JSON.stringify(brief, null, 2);
       return `### DIRECTIVE from ${label}\n- ${content}`;
     });
@@ -273,7 +295,13 @@ export async function runBomAgent(solution, options = {}) {
     "Return a practical BOM with concise rows, quantities, and notes.",
     "If a model number is uncertain, say it must be verified with the distributor instead of inventing one.",
     "Never emit bracket placeholders like [Disk from KB] or [NIC from KB].",
-    "For HCI use cases (S2D, VxRail, Proxmox, or any HCI cluster): minimum 3 compute nodes are required for quorum and redundancy. Never output Qty < 3 for HCI cluster compute nodes."
+    "For HCI use cases (S2D, VxRail, Proxmox, or any HCI cluster): minimum 3 compute nodes are required for quorum and redundancy. Never output Qty < 3 for HCI cluster compute nodes.",
+    "HCI node count policy: use exactly 3 nodes unless VM count > 100 OR the requirement explicitly states mission-critical / tier-1 HA. Do NOT output 4+ nodes without justification written in the notes.",
+    "Windows Server licensing is per physical core (min 16 cores/socket × 2 sockets = 32 cores/server). In Licensing rows, state cores explicitly (e.g., 'Windows Server 2022 Datacenter — 32 cores/server × N servers = X cores total'). NEVER express WS licensing as 'sockets', 'socket packs', or '8 sockets across N nodes'.",
+    "Windows Server Edition rule: Use 'Windows Server 2022 Datacenter' for Nutanix AHV (ThinkAgile HX), VMware vSphere, Proxmox, and ANY non-Azure-Stack hypervisor. Use 'Windows Server 2022 Datacenter: Azure Edition' ONLY when the HCI platform is Azure Stack HCI (ThinkAgile MX, Dell AX for Azure Stack HCI, or HPE ProLiant for Azure Stack HCI). Mis-pairing Azure Edition with Nutanix AHV or VMware is a licensing error.",
+    "Veeam licensing model: For VM-based backup, use per-VM (Veeam Universal License — VUL) or per-socket. Do NOT use capacity-based (per-TB) licensing for general VM backup. State license type AND quantity explicitly (e.g., '50 VUL instances' or 'Per-socket × 6 sockets'). Capacity-based licensing is ONLY valid for Veeam Backup for Microsoft 365 per-user, or object storage archive tiers.",
+    "Backup infrastructure requirement: If the selected solution includes Veeam, Commvault, or any backup platform, the BOM MUST include BOTH: (a) a backup server — a dedicated Windows Server (min 8 cores, 32GB RAM, 500GB boot SSD) OR an explicit note 'backup server runs as VM on HCI cluster — sized 8vCPU/32GB/500GB'; AND (b) a backup storage target — Data Domain / DE-series / StoreOnce / ThinkSystem DM / NAS appliance. Do NOT rely on production HCI storage as backup repository.",
+    "RAM sizing per node must use standard DIMM configurations: 128 / 192 / 256 / 384 / 512 / 768 / 1024 GB. Formula: ceil(vm_count × 8GB avg × 1.2 overhead ÷ node_count) rounded UP to the next standard size. Never output non-standard values like 160GB or 200GB."
   ].join("\n- ");
 
   const model = config.openai.models.bom;
