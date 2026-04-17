@@ -1,5 +1,52 @@
 # Session Log
 
+## 2026-04-17 (Session 9)
+
+### Done
+
+**Archive Obsolete Plans ✅**
+- `2026-04-12-presale-expert-system.md` → ARCHIVED/ (all 8 tasks done before restart)
+- `2026-04-13-commercial-hardening.md` → ARCHIVED/ (all code tasks done before restart)
+
+**Critical Bug Fixes**
+- Nutanix leaked into solution options — customer said Dell/HPE/Lenovo only → fixed in `lib/chat.js` (47d0cec)
+- VMware license in HPE BOM despite customer rejecting VMware → fixed in `agents/bom.js` (47d0cec)
+- LOCAL_USERS import error on Render deploy → fixed `routes/admin.js` (77e7dcd)
+- KB import path double-join (`raw/raw/uploads/`) → fixed `knowledge_base/raw-import-lib.js` (b29dd98)
+
+**Wiki/KB Order Verification**
+- Solution agent: wikiContext → [KNOWLEDGE BASE] ✅ CORRECT
+- Specialist agent: wikiContext → [PRODUCT KNOWLEDGE BASE] ✅ CORRECT
+
+**Systematic Testing (HCI case: 20TB, 50VM, Dell/HPE preferred, no VMware)**
+- Vendor preference extraction: Dell/HPE detected ✅
+- Nutanix block: NOW WORKING ✅
+- Network diagram: rendered correctly ✅
+- Grounding warnings: R760xs flagged correctly ✅
+
+**Render MCP Server**
+- Configured with Bearer token rnd_BoPQwfS9DCDYAKmbyuqXp14YzgbN
+
+### Pending
+
+- R760/R7625 spec sheets not in KB → grounding warning misleading (need to upload Dell R760/R7625 datasheets)
+- Multi-tenant Beta Tasks 5-12 (in worktree `feature/multi-tenant-beta`)
+- Manual credential rotations (OpenAI, Anthropic, Supabase API keys + SENTRY_DSN)
+
+### Key Commits Today (master)
+
+| Commit | Description |
+|--------|-------------|
+| `711836a` | docs: archive completed plans |
+| `77e7dcd` | fix: remove LOCAL_USERS import (deprecated) from routes/admin.js |
+| `47d0cec` | fix: block Nutanix from solution options + VMware from BOM when rejected |
+| `b29dd98` | fix: normalize uploaded file path in KB import (strip duplicate uploads/) |
+| `4634920` | feat: add Network Diagram Generator — Mermaid topology |
+| `7fa77b0` | feat: add LLM-powered Wiki Knowledge Layer |
+| `1057c01` | chore: export wiki db module from lib/db/index |
+
+---
+
 ## 2026-04-08 (Session 8)
 
 ### Done
