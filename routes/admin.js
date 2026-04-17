@@ -89,7 +89,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/audit") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const logs = await readAgentLogs(200);
       json(response, 200, { ok: true, logs });
@@ -100,7 +100,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/corrections") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const corrections = await listCorrections({ limit: 100 });
       json(response, 200, { ok: true, corrections });
@@ -111,7 +111,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/corrections/aggregate") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const result = await aggregateCorrectionsToKb();
       json(response, 200, { ok: true, kb_entries_upserted: result.count });
@@ -122,7 +122,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/kb/documents") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const documents = await listKnowledgeDocuments();
       json(response, 200, { ok: true, documents });
@@ -133,7 +133,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/kb/upload") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const rawPayload = await parseBody(request);
       const payload = normalizeKnowledgeUploadPayload(rawPayload);
@@ -170,7 +170,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname.startsWith("/api/admin/kb/jobs/")) {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     const jobId = url.pathname.slice("/api/admin/kb/jobs/".length);
     const job = getJob(jobId);
     if (!job) {
@@ -182,7 +182,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "DELETE" && url.pathname === "/api/admin/kb/documents") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const payload = normalizeKnowledgeDeletePayload(await parseBody(request));
       const result = await deleteKnowledgeDocumentBySourceFile(payload.source_file);
@@ -245,7 +245,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/feedback") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const feedback = await getAdminFeedbackSummary();
       json(response, 200, { ok: true, feedback });
@@ -256,7 +256,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/users") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const client = getSupabaseAdmin();
       if (!client) {
@@ -275,7 +275,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/users") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const { username, password, display_name, role } = await parseBody(request);
       if (!username || !password || !display_name) {
@@ -306,7 +306,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "PATCH" && url.pathname.match(/^\/api\/admin\/users\/[^/]+$/)) {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const userId = url.pathname.split("/")[4];
       const { role, display_name } = await parseBody(request);
@@ -336,7 +336,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "DELETE" && url.pathname.match(/^\/api\/admin\/users\/[^/]+$/)) {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const userId = url.pathname.split("/")[4];
       const currentUserId = getSessionUserId(request);
@@ -355,7 +355,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/wiki/pages") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const pages = await listWikiPages();
       json(response, 200, { ok: true, pages });
@@ -366,7 +366,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/wiki/generate") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const { source_file } = await parseBody(request);
       if (!source_file) return json(response, 400, { ok: false, error: "source_file required" }), true;
@@ -414,7 +414,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/wiki/generate-all") {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const fs = await import("fs/promises");
       const path = await import("path");
@@ -474,7 +474,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "DELETE" && url.pathname.startsWith("/api/admin/wiki/pages/")) {
-    if (!requireRole(request, response, ["admin"])) return true;
+    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
       const pageId = url.pathname.slice("/api/admin/wiki/pages/".length);
       const result = await deleteWikiPageDb(pageId);

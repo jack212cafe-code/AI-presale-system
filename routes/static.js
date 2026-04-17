@@ -34,6 +34,9 @@ export async function handle(request, url, response) {
     case "/signup":
       serveFile(response, path.join(ROOT, "signup", "index.html"), "text/html; charset=utf-8");
       return true;
+    case "/signup/index.html":
+      serveFile(response, path.join(ROOT, "signup", "index.html"), "text/html; charset=utf-8");
+      return true;
     case "/signup/signup.js":
       serveFile(response, path.join(ROOT, "signup", "signup.js"), "application/javascript; charset=utf-8");
       return true;

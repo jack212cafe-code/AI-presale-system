@@ -60,7 +60,8 @@ CREATE POLICY "Message isolation" ON messages
 -- Knowledge Base: Private vs Global logic
 -- Global KB: org_id is NULL, Private KB: org_id is set
 CREATE POLICY "KB isolation" ON knowledge_base
-    USING (org_id IS NULL OR org_id = (SELECT org_id FROM users WHERE id = auth.uid()));
+    USING (org_id IS NULL OR org_id = (SELECT org_id FROM users WHERE id = auth.uid()))
+    WITH CHECK (org_id IS NULL OR org_id = (SELECT org_id FROM users WHERE id = auth.uid()));
 
 -- User Preferences: Isolation by user_id (already exists) and org_id
 CREATE POLICY "Preference isolation" ON user_preferences
