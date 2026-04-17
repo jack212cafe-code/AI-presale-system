@@ -37,7 +37,7 @@ Dell PowerEdge Generation 16 (16G) and Generation 17 (17G) are the current platf
 ### Specs
 - Form factor: 2U rack
 - CPU: Intel Xeon Scalable 5th Gen (dual socket)
-- Memory: DDR5, up to 32 DIMM slots (up to 8TB RAM)
+- Memory: DDR5, up to 32 DIMM slots (up to 8TB RAM), supported configurations: 128/256/512GB/1TB/2TB per processor socket
 - Storage: Up to 24 x 2.5" SFF or 8 x 3.5" LFF
 - GPU: Up to 3 x double-wide GPUs (PCIe 5.0)
 - Network: Integrated 2 x 1GbE + OCP 3.0

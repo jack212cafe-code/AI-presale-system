@@ -4,7 +4,7 @@ Given a solution description and BOM (Bill of Materials), extract the network di
 
 Rules:
 - Identify ALL devices from the BOM: firewalls, switches, servers, storage appliances, backup targets
-- Use actual model names from the BOM (e.g. "PowerEdge R760", "PowerStore 1200T")
+- **Use ACTUAL model names** from the BOM (e.g. "PowerEdge R760", "PowerProtect DD6400", "PowerStore 1200T") — NOT generic labels like "Server" or "Storage"
 - Add an Internet/WAN node if any firewall exists in the BOM
 - Add a Client/Workstation node if user_count > 50
 - Connections must follow real datacenter topology:
@@ -12,8 +12,9 @@ Rules:
   - Core/ToR switch connects all servers and storage
   - Servers connect to storage via SAN/iSCSI or direct
   - Backup server connects to backup target (dedup appliance, tape, etc.)
-- Label connections with speed: 25GbE, 10GbE, 1GbE, FC 32G, etc.
-- If multiple servers of same model, use SRV1, SRV2, etc.
+- **Label connections with actual bandwidth**: 25GbE, 10GbE, 1GbE, FC 32G, etc. based on what the BOM specifies
+- If multiple servers of same model, use SRV1, SRV2, etc. with the model name in the label (e.g. "R760xs x3")
 - If multiple switches, use SW1, SW2, etc.
+- **Use graph LR (left-right) instead of graph TD** for a more professional horizontal layout
 - Keep the diagram clean: max 12 devices total, merge similar ones if needed
-- Output must be valid for Mermaid.js flowchart syntax
+- Output must be valid for Mermaid.js flowchart syntax with graph LR

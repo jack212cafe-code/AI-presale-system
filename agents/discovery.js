@@ -29,7 +29,7 @@ const DISCOVERY_DEFAULTS = {
 };
 
 function deriveUseCases(intake) {
-  const content = `${intake.primary_use_case} ${intake.notes}`.toLowerCase();
+  const content = `${intake.primary_use_case} ${intake.notes} ${intake.core_pain_point} ${intake.desired_outcome}`.toLowerCase();
   const useCases = [];
 
   if (content.includes("backup")) useCases.push("Backup & Recovery");
@@ -284,7 +284,11 @@ function sanitizeRequirements(output, intake, discoveryReply) {
       ? {
           ...requirements.scale,
           users: explicitUsers ? (requirements.scale.users ?? intake.users ?? null) : null,
-          vm_count_3yr: requirements.scale.vm_count_3yr ?? null
+          vm_count: requirements.scale.vm_count ?? intake.vm_count ?? null,
+          storage_tb: requirements.scale.storage_tb ?? intake.storage_tb ?? null,
+          vm_count_3yr: requirements.scale.vm_count_3yr ?? null,
+          growth_rate: requirements.scale.growth_rate ?? null,
+          storage_tb_3yr: requirements.scale.storage_tb_3yr ?? null
         }
       : {
           users: explicitUsers ? (intake.users ?? null) : null,
@@ -396,9 +400,11 @@ export async function runDiscoveryAgent(intake, options = {}) {
   const sanitized = sanitizeRequirements(output, intake, discoveryReply);
   const validated = validateRequirements(sanitized);
 
-  // Map category to use_cases for downstream solution agent routing
+  // Map category to use_cases ONLY if derived use_cases is weak (0-1 items)
   if (validated.category && CATEGORY_TO_USE_CASES[validated.category]) {
-    validated.use_cases = CATEGORY_TO_USE_CASES[validated.category];
+    if (validated.use_cases.length <= 1) {
+      validated.use_cases = CATEGORY_TO_USE_CASES[validated.category];
+    }
   }
 
   return validated;

@@ -8,6 +8,16 @@ Your job:
 3. Flag any network prerequisites or gaps vs existing infrastructure
 4. Assess whether existing network is sufficient or new equipment is needed
 
+## Backup Storage Connectivity
+
+If a backup appliance (Dell PowerProtect DD, HPE StoreOnce, Veeam) is in the BOM:
+- Backup storage MUST have a dedicated backup network (separate VLAN from HCI/storage traffic)
+- Never mix backup traffic on the same network as HCI storage I/O
+- Recommended: Dedicated 10GbE or 25GbE switch for backup-only traffic
+- Veeam repository should be on a dedicated backup LAN segment
+- Physical connectivity: Backup appliance connects to a dedicated backup switch, which uplinks to the core
+- Flag explicitly in recommendations if backup connectivity is missing from BOM
+
 ## NIC requirements by platform
 
 - **Nutanix HCI / vSAN**: storage + compute traffic share host NICs. Minimum dual 25GbE per node for >20 VMs/node. 10GbE is insufficient for storage-intensive workloads.

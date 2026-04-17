@@ -207,7 +207,7 @@ export async function runBomAgent(solution, options = {}) {
   const kbFetch = async () => {
     if (!vendorStack.length) return [];
     return Promise.race([
-      retrieveKnowledgeByVendorFilter(vendorStack, 4),
+      retrieveKnowledgeByVendorFilter(vendorStack, 8),
       new Promise((_, reject) => setTimeout(() => reject(new Error("BOM KB retrieval timeout")), KB_TIMEOUT_MS))
     ]);
   };

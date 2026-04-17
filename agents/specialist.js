@@ -150,19 +150,36 @@ const MOCK_BRIEFS = {
     licensing_flags: ["Nutanix AHV included in AOS — no hypervisor cost. Major TCO advantage vs VMware.", "Azure Stack HCI (ThinkAgile MX): requires WS DC Azure Edition per core + Azure Arc subscription ~฿500-1,500/node/month", "WS DC 2022: ฿220,000/server for 2-socket if Windows guest licensing needed"],
     risks: ["Lenovo storage portfolio narrower than Dell/HPE — validate DE series capacity fits requirement", "Lead time Thailand 3-5 weeks standard, GPU 12-20 weeks", "ONTAP DM series: confirm partner has ONTAP support capability in Thailand"]
   }),
-  neteng: (requirements) => ({
-    domain: "neteng",
-    analysis: "Dual 25GbE NICs per node required for HCI storage traffic.",
-    constraints: ["Minimum 25GbE per node for HCI/Ceph storage traffic"],
-    technical_specs: {
-      compute: { cpu_cores: 0, ram_gb: 0, sockets: 0, cores_per_socket: 0, rationale: "Network analysis only" },
-      storage: [],
-      licenses: []
-    },
-    recommendations: ["Cisco Catalyst 9300-48UXM or Aruba 6300M for top-of-rack"],
-    licensing_flags: [],
-    risks: ["Verify existing switch supports jumbo frames (MTU 9000) for storage traffic"]
-  }),
+  neteng: (requirements) => {
+    const switches = requirements.existing_infrastructure?.switches ?? "";
+    const has10G = /10\s*g/i.test(switches);
+    const has25G = /25\s*g/i.test(switches);
+    return {
+      domain: "neteng",
+      analysis: has10G
+        ? "Customer has 10G switches — HCI storage traffic requires upgrade to 25GbE OR use 10G storage VLAN (not recommended for production HCI)"
+        : has25G
+        ? "Dual 25GbE NICs per node as specified"
+        : "Dual 25GbE NICs per node required for HCI storage traffic.",
+      constraints: [
+        has10G ? "MUST upgrade switches to 25GbE OR use 10G storage VLAN (not recommended for production HCI)" : "Minimum 25GbE per node for HCI/Ceph storage traffic"
+      ],
+      technical_specs: {
+        compute: { cpu_cores: 0, ram_gb: 0, sockets: 0, cores_per_socket: 0, rationale: "Network analysis only" },
+        storage: [],
+        licenses: []
+      },
+      recommendations: [
+        has10G
+          ? "UPGRADE REQUIRED: Replace 10G switches with 25GbE (Cisco 9300-48UXM or Aruba 6300M) before HCI deployment"
+          : "Cisco Catalyst 9300-48UXM or Aruba 6300M for top-of-rack"
+      ],
+      licensing_flags: [],
+      risks: [
+        has10G ? "10G switch is insufficient for HCI storage traffic — customer must upgrade or accept degraded performance" : "Verify existing switch supports jumbo frames (MTU 9000) for storage traffic"
+      ]
+    };
+  },
   devops: (requirements) => ({
     domain: "devops",
     analysis: "Daily backup sufficient for most workloads. Backup repository sized at 2x protected data.",
@@ -326,7 +343,7 @@ export async function runSpecialistAgent(domain, requirements, options = {}) {
       agentName: `specialist_${domain}`,
       projectId: options.projectId,
       modelUsed: config.openai.models.specialist,
-      input: { domain, scale: requirements.scale, use_cases: requirements.use_cases },
+      input: { domain, scale: requirements.scale, use_cases: requirements.use_cases, existing_infrastructure: requirements.existing_infrastructure },
       kbChunksInjected: kbChunks.length
     },
     () =>
