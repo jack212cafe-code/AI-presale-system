@@ -121,8 +121,15 @@ async function extractTextFromFile(absolutePath) {
     }
     try {
       const result = await withTimeout(pdfParse(buffer), PARSE_TIMEOUT_MS, absolutePath);
-      return cleanText(result.text);
+      const text = cleanText(result.text);
+      if (!text || text.trim().length === 0) {
+        throw new Error(`No text extracted from ${absolutePath}. This PDF may be image-only (scanned). Please convert to text-based PDF or use a tool with OCR before importing.`);
+      }
+      return text;
     } catch (error) {
+      if (error.message.includes("Parse timeout")) {
+        throw new Error(`PDF is too complex to parse within ${PARSE_TIMEOUT_MS}ms. Try splitting the document into smaller parts.`);
+      }
       throw new Error(`PDF parsing failed for ${absolutePath}: ${error.message}`);
     }
   }

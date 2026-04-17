@@ -448,7 +448,12 @@ export async function handle(request, url, response) {
             let text = "";
             if (ext === ".pdf") {
               const pdfParse = (await import("pdf-parse")).default;
-              text = (await pdfParse(buf)).text;
+              try {
+                const result = await pdfParse(buf);
+                text = result.text;
+              } catch (err) {
+                throw new Error(`PDF parsing failed: ${err.message}`);
+              }
             } else if (ext === ".docx") {
               const mammoth = (await import("mammoth")).default;
               text = (await mammoth.extractRawText({ buffer: buf })).value;

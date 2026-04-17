@@ -74,6 +74,19 @@ export async function _getKnowledgeWithDeps(requirements, deps) {
   const useCases = Array.isArray(requirements.use_cases) ? requirements.use_cases : [];
   const _t = Date.now();
 
+  // 1. Wiki-First: Priority for structural/portfolio guidance
+  let wikiContext = "";
+  try {
+    // Note: using a simplified search for portfolio/architecture notes based on use cases
+    const wikiKeywords = useCases.join(" ").toLowerCase();
+    const wikiPages = await deps.getWikiPagesForRequirements(requirements);
+    if (wikiPages && wikiPages.length > 0) {
+      wikiContext = wikiPages.map(p => `[WIKI: ${p.product_name}] ${p.overview} ${p.positioning}`).join("\n\n");
+    }
+  } catch (err) {
+    logger.warn("solution.wiki_retrieval_failed", { error: err.message });
+  }
+
   if (hasSupabaseFn() && hasEmbeddingFn()) {
     console.log(`[solution:kb] vector-path started useCases=${useCases.length}`);
     try {
@@ -104,7 +117,13 @@ export async function _getKnowledgeWithDeps(requirements, deps) {
         const chunks = Array.from(byId.values())
           .sort((a, b) => b.similarity - a.similarity)
           .slice(0, 5);
-        return { chunks, retrieval_mode: "vector" };
+
+        // Append Wiki context to the top of the knowledge set
+        const finalChunks = wikiContext
+          ? [{ id: "wiki-context", title: "Portfolio & Architecture Guidance", content: wikiContext, similarity: 1.0 }, ...chunks]
+          : chunks;
+
+        return { chunks: finalChunks, retrieval_mode: "vector" };
       }
     } catch (err) {
       logger.warn("solution.kb_fallback", { use_case: useCase, error: err.message });
@@ -123,7 +142,12 @@ export async function _getKnowledgeWithDeps(requirements, deps) {
   const chunks = Array.from(byKey.values())
     .sort((a, b) => (b.score || 0) - (a.score || 0))
     .slice(0, 5);
-  return { chunks, retrieval_mode: "local_fallback" };
+
+  const finalLocalChunks = wikiContext
+    ? [{ id: "wiki-context", title: "Portfolio & Architecture Guidance", content: wikiContext, similarity: 1.0 }, ...chunks]
+    : chunks;
+
+  return { chunks: finalLocalChunks, retrieval_mode: "local_fallback" };
 }
 
 export async function getKnowledge(requirements) {
@@ -132,7 +156,8 @@ export async function getKnowledge(requirements) {
     retrieveVectorFn: retrieveKnowledgeFromVector,
     retrieveLocalFn: retrieveLocalKnowledge,
     hasSupabaseFn: hasSupabaseAdmin,
-    hasEmbeddingFn: hasEmbeddingConfig
+    hasEmbeddingFn: hasEmbeddingConfig,
+    getWikiPagesForRequirements: getWikiPagesForRequirements
   });
 }
 
@@ -306,7 +331,10 @@ export async function runSolutionAgent(requirements, options = {}) {
         if (!Array.isArray(currentOutput.options) || currentOutput.options.length === 0) break;
 
         const allOptionsValid = currentOutput.options.every(opt =>
-          validateSolutionOption(opt, { user_count: requirements.scale?.user_count }).valid
+          validateSolutionOption(opt, {
+            user_count: requirements.scale?.user_count,
+            requested_topology: requirements.topology || (requirements.use_cases?.join(" ").toLowerCase().includes("hci") ? "HCI" : null)
+          }).valid
         );
 
         if (allOptionsValid) break;
@@ -314,11 +342,15 @@ export async function runSolutionAgent(requirements, options = {}) {
         attempts++;
         const validationErrors = currentOutput.options
           .map((opt, idx) => {
-            const res = validateSolutionOption(opt, { user_count: requirements.scale?.user_count });
+            const res = validateSolutionOption(opt, {
+              user_count: requirements.scale?.user_count,
+              requested_topology: requirements.topology || (requirements.use_cases?.join(" ").toLowerCase().includes("hci") ? "HCI" : null)
+            });
             return res.valid ? null : `Option ${idx + 1}: ${res.errors.join("; ")}`;
           })
           .filter(Boolean)
           .join("\n");
+
 
         logger.warn("solution.validation_failed", { attempt: attempts, errors: validationErrors });
         console.log(`[solution] +${Date.now()-_t0}ms self-correction attempt=${attempts}`);
