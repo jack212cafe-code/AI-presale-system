@@ -224,6 +224,11 @@ export async function runBomAgent(solution, options = {}) {
     ? `\n\n[VENDOR ENFORCEMENT]\nThis BOM MUST use ONLY these vendors as specified in the selected solution: ${vendorStack.join(", ")}. Do NOT substitute any vendor. Every hardware row must come from this vendor list.`
     : "";
 
+  const dislikedVendors = options.requirements?.vendor_preferences?.disliked ?? [];
+  const dislikedEnforcement = dislikedVendors.length > 0
+    ? `\n\n[EXCLUDED VENDORS]\nThe customer explicitly rejected these vendors — do NOT include them in any row of this BOM: ${dislikedVendors.join(", ")}. If a row would require a product from these vendors (e.g. VMware licenses for VMware hypervisors), omit it and note that an alternative must be sourced.`
+    : "";
+
   let specialistContext = "";
   if (Array.isArray(options.specialistBriefs) && options.specialistBriefs.length > 0) {
     const sections = options.specialistBriefs.map((brief) => {
@@ -268,7 +273,7 @@ export async function runBomAgent(solution, options = {}) {
     output = await withAgentLogging(
       { agentName: "bom", projectId: options.projectId, modelUsed: model, input: { selected_option: selected, scale }, kbChunksInjected: kbChunks.length },
       () => callBomWithTimeout({
-        systemPrompt: `${prompt}\n\n[BOM RULES]\n- ${bomRules}${vendorEnforcement}${specialistContext}${kbContext}`,
+        systemPrompt: `${prompt}\n\n[BOM RULES]\n- ${bomRules}${vendorEnforcement}${dislikedEnforcement}${specialistContext}${kbContext}`,
         userPrompt,
         model,
         textFormat: bomTextFormat
