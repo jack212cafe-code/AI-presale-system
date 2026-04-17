@@ -114,7 +114,7 @@ const bomTextFormat = {
         }
       }
     },
-    required: ["rows", "notes"]
+    required: ["rows", "notes", "thai_explanations"]
   }
 };
 

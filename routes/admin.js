@@ -13,7 +13,7 @@ import {
 } from '../lib/user-auth.js';
 import { createJob, getJob, updateJob } from '../lib/admin-jobs.js';
 import { deleteKnowledgeDocumentBySourceFile, getSupabaseAdmin, listKnowledgeDocuments, readAgentLogs } from '../lib/supabase.js';
-import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument } from '../knowledge_base/raw-import-lib.js';
+import { deleteRawDocumentFiles, importRawDocuments, saveUploadedRawDocument, extractTextFromFile } from '../knowledge_base/raw-import-lib.js';
 import { orgUserManager } from '../lib/org-user-manager.js';
 import { listCorrections, aggregateCorrectionsToKb } from '../lib/corrections.js';
 import { getAdminFeedbackSummary } from '../lib/projects.js';
@@ -388,8 +388,7 @@ export async function handle(request, url, response) {
           const ext = path.extname(fullPath).toLowerCase();
           let text = "";
           if (ext === ".pdf") {
-            const pdfParse = (await import("pdf-parse")).default;
-            text = (await pdfParse(buf)).text;
+            text = await extractTextFromFile(fullPath);
           } else if (ext === ".docx") {
             const mammoth = (await import("mammoth")).default;
             text = (await mammoth.extractRawText({ buffer: buf })).value;
@@ -447,10 +446,8 @@ export async function handle(request, url, response) {
             const ext = path.extname(fullPath).toLowerCase();
             let text = "";
             if (ext === ".pdf") {
-              const pdfParse = (await import("pdf-parse")).default;
               try {
-                const result = await pdfParse(buf);
-                text = result.text;
+                text = await extractTextFromFile(fullPath);
               } catch (err) {
                 throw new Error(`PDF parsing failed: ${err.message}`);
               }
