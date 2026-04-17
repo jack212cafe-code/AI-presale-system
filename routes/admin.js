@@ -164,6 +164,7 @@ export async function handle(request, url, response) {
         job_id: jobId
       });
     } catch (error) {
+      console.error(`[kb-upload] error: ${error.message}`);
       json(response, 400, { ok: false, error: error.message });
     }
     return true;
