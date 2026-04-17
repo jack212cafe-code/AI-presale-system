@@ -100,6 +100,18 @@ const bomTextFormat = {
       notes: {
         type: "array",
         items: { type: "string" }
+      },
+      thai_explanations: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            row_index: { type: "integer" },
+            explanation: { type: "string" }
+          },
+          required: ["row_index", "explanation"]
+        }
       }
     },
     required: ["rows", "notes"]

@@ -92,7 +92,8 @@ Return valid JSON:
 {
   "options": [...],
   "selected_option": 0,
-  "notes": [...]
+  "notes": [...],
+  "thai_narrative": "string — Thai prose explaining the recommended option in 2-3 paragraphs: architecture summary, why this option, key trade-offs vs alternatives, main risks. Written as senior presale engineer speaking to customer."
 }
 ```
 

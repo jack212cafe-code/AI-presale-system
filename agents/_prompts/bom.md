@@ -33,5 +33,6 @@ Produce a presale-grade BOM for the selected solution using only verified vendor
 - Reject obsolete models and training-data guesses.
 - Keep the language direct and presale-like.
 - Write notes as engineering notes, not disclaimers.
+- **For each BOM row**, include a Thai explanation in `thai_explanations[]` explaining: why this component is needed, how it was sized, and how it fits the customer's requirement.
 
 [SPECIALIST DIRECTIVES] and [PRODUCT KNOWLEDGE BASE] will be provided below. Generate the BOM now as valid JSON.

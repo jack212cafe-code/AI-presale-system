@@ -62,9 +62,10 @@ const solutionTextFormat = {
       notes: {
         type: "array",
         items: { type: "string" }
-      }
+      },
+      thai_narrative: { type: "string" }
     },
-    required: ["options", "selected_option", "missing_information", "notes"]
+    required: ["options", "selected_option", "missing_information", "notes", "thai_narrative"]
   }
 };
 

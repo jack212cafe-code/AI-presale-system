@@ -156,6 +156,7 @@ const discoveryTextFormat = {
         type: "array",
         items: { type: "string" }
       },
+      rtorpo: { type: ["string", "null"] },
       source_mode: { type: ["string", "null"] },
       category: {
         type: "string",
@@ -182,6 +183,7 @@ const discoveryTextFormat = {
       "timeline",
       "constraints",
       "gaps",
+      "rtorpo",
       "source_mode",
       "category",
       "assumptions_applied"
@@ -339,6 +341,7 @@ function sanitizeRequirements(output, intake, discoveryReply) {
     timeline: requirements.timeline ?? intake.timeline ?? null,
     constraints: toArray(requirements.constraints),
     gaps: toArray(requirements.gaps),
+    rtorpo: requirements.rtorpo ?? null,
     source_mode: requirements.source_mode ?? "live",
     category: requirements.category ?? null,
     explicit_fields: {

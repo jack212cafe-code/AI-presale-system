@@ -65,6 +65,7 @@ Schema fields:
 - timeline: string or null
 - constraints: array — include vendor exclusions, technology preferences, budget limits
 - gaps: array — include licensing risks, sizing uncertainties, missing critical info
+- rtorpo: string or null — RTO/RPO requirement (e.g. "RTO 2 ชม., RPO 1 ชม."). Extract from Thai text: "rto", "rpo", "ชั่วโมง", "hour", "recovery", "disaster" patterns
 - source_mode: "live"
 - category: HCI | DR | Backup | Security | Full-stack
 - assumptions_applied: array of Thai strings
