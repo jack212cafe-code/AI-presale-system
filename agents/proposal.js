@@ -165,6 +165,8 @@ export async function runProposalAgent(project, requirements, solution, bom, opt
     executiveSummary: sanitized.executive_summary,
     solutionOverview: sanitized.solution_overview,
     solutionArchitecture: selectedOption?.architecture ?? null,
+    solutionTopology: selectedOption?.topology ?? null,
+    solutionHypervisor: selectedOption?.hypervisor ?? null,
     solutionVendors: selectedOption?.vendor_stack ?? [],
     bomRows: (bom.rows ?? []).filter(r => r.category !== "GROUNDING WARNING"),
     optionsConsidered: sanitized.options_considered,

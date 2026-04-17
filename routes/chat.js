@@ -14,6 +14,7 @@ import { runAllSpecialists } from '../agents/specialist.js';
 import { runBomAgent } from '../agents/bom.js';
 import { runProposalAgent } from '../agents/proposal.js';
 import { checkBudgetOverrun } from '../lib/budget.js';
+import { validateHciComputeDrives, validateBackupServer, validateSwitchAddition } from '../lib/sizing-validator.js';
 import { handleChatMessage } from '../lib/chat.js';
 import { requireUserAuth, json, parseBody } from './helpers.js';
 import { getSessionUserId, getSessionUser } from '../lib/user-auth.js';
@@ -54,6 +55,16 @@ export async function handle(request, url, response) {
       const selectedOpt = solution.options?.[solution.selected_option ?? 0];
       const budgetWarning = checkBudgetOverrun(selectedOpt?.estimated_tco_thb, requirements.budget_range);
 
+      const resolvedTopology = selectedOpt?.topology ?? null;
+      const hciDriveChecks = validateHciComputeDrives(bom.rows ?? [], resolvedTopology);
+      const backupServerChecks = validateBackupServer(bom.rows ?? [], selectedOpt);
+      const switchChecks = validateSwitchAddition(bom.rows ?? [], requirements?.existing_infrastructure);
+      const bomWarnings = [
+        ...hciDriveChecks.warnings,
+        ...backupServerChecks.warnings,
+        ...switchChecks.warnings
+      ];
+
       await approveProject(projectId);
 
       stageFailed = "proposal";
@@ -69,7 +80,8 @@ export async function handle(request, url, response) {
           solution: "complete",
           bom: "complete",
           proposal: "complete"
-        }
+        },
+        bom_warnings: bomWarnings.length ? bomWarnings : null
       });
     } catch (error) {
       const partialProject = projectId ? await getProjectById(projectId).catch(() => project) : project;

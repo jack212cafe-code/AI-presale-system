@@ -49,14 +49,33 @@ function buildVendorKbContext(chunks) {
   return `\n\n[PRODUCT KNOWLEDGE BASE]\nUse ONLY the products and specs found below. Do not invent model numbers, capacity tiers, or obsolete generations.\n\n${kbText}${verifiedLine}`;
 }
 
-async function callBomWithTimeout({ systemPrompt, userPrompt, model, textFormat }) {
+function buildMockBom(selectedOption) {
+  const vendor = selectedOption?.vendor_stack?.[0] ?? "Generic";
+  const topology = selectedOption?.topology ?? "HCI";
+  return {
+    rows: [
+      { category: "[Compute]", description: `${vendor} compute node — 2× 16C CPU, 256GB RAM, 2× 480GB SSD (boot), 4× 3.84TB NVMe (data)`, qty: 3, notes: "HCI cluster minimum" },
+      { category: "[Storage]", description: "Internal DSF / vSAN distributed storage (HCI)", qty: 1, notes: "Managed by hypervisor" },
+      { category: "[Network]", description: "25GbE ToR switch", qty: 2, notes: "Redundant pair" },
+      { category: "[Licensing]", description: `${vendor} software license`, qty: 1, notes: "Annual subscription" },
+      { category: "[Support & Warranty]", description: "3-year hardware support", qty: 1, notes: "NBD on-site" }
+    ],
+    notes: ["Mock BOM — replace with real LLM output in production"],
+    thai_explanations: [
+      { row_index: 0, explanation: "เซิร์ฟเวอร์ compute หลักของ cluster" }
+    ]
+  };
+}
+
+async function callBomWithTimeout({ systemPrompt, userPrompt, model, textFormat, mockResponseFactory }) {
   const result = await generateJsonWithOpenAI({
     systemPrompt,
     userPrompt,
     model,
     textFormat,
     maxOutputTokens: BOM_MAX_TOKENS,
-    timeoutMs: BOM_CALL_TIMEOUT_MS
+    timeoutMs: BOM_CALL_TIMEOUT_MS,
+    mockResponseFactory
   });
 
   if (!Array.isArray(result.output?.rows) || result.output.rows.length === 0) {
@@ -320,7 +339,8 @@ export async function runBomAgent(solution, options = {}) {
         systemPrompt: `${prompt}\n\n[BOM RULES]\n- ${bomRules}${vendorEnforcement}${dislikedEnforcement}${specialistContext}${kbContext}`,
         userPrompt,
         model,
-        textFormat: bomTextFormat
+        textFormat: bomTextFormat,
+        mockResponseFactory: async () => buildMockBom(selected)
       })
     );
     console.log(`[bom] +${Date.now()-_t}ms attempt-1 done rows=${output?.rows?.length}`);
@@ -334,7 +354,8 @@ export async function runBomAgent(solution, options = {}) {
         systemPrompt: `${prompt}\n\n[RECOVERY]\nThe previous attempt failed validation or timed out.\n- Return valid JSON only.\n- Include at least 5 rows.\n- Keep descriptions short and specific.\n- Do not mention prior chats or old projects.\n- Never emit bracket placeholders like [Disk from KB] or [NIC from KB].${vendorEnforcement}${specialistContext}${kbContext}`,
         userPrompt,
         model,
-        textFormat: bomTextFormat
+        textFormat: bomTextFormat,
+        mockResponseFactory: async () => buildMockBom(selected)
       })
     );
     console.log(`[bom] +${Date.now()-_t}ms attempt-2 done rows=${output?.rows?.length}`);

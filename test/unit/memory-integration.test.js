@@ -11,7 +11,8 @@ import {
 import { buildSolutionMemoryContext } from "../../agents/solution.js";
 import { getVendorPreferences, upsertVendorPreference } from "../../lib/user-preferences.js";
 
-const TEST_USER_ID = "test-user-memory-01";
+const TEST_USER_ID = `test-user-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const UPSERT_TEST_USER_ID = `test-upsert-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const TEST_CUSTOMER = "Acme Corp";
 
 describe("updateProjectName — local mode", () => {
@@ -53,7 +54,7 @@ describe("upsertVendorPreference — local mode", () => {
   it("returns an object with a 'saved' boolean property", async () => {
     let result;
     try {
-      result = await upsertVendorPreference(TEST_USER_ID, "Nutanix", "preferred");
+      result = await upsertVendorPreference(UPSERT_TEST_USER_ID, "Nutanix", "preferred");
     } catch {
       result = { saved: false };
     }
