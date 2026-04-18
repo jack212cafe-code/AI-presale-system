@@ -285,10 +285,49 @@ export function buildSolutionMemoryContext(requirements) {
   return memoryContext;
 }
 
+const MODEL_TOKEN_PATTERN = /\b([A-Z]{1,4}\d{2,5}[A-Za-z0-9]{0,5})\b/g;
+const MODEL_TOKEN_DENYLIST = new Set([
+  "GEN10", "GEN11", "GEN12", "DDR4", "DDR5", "RAID5", "RAID6", "RAID10",
+  "USB3", "PCIE4", "PCIE5", "FC32", "FC64", "ISO27001", "SOC2", "TLS12", "TLS13",
+  "IPV4", "IPV6", "HTTP2", "HTTP3"
+]);
+
+function extractModelsByCategory(chunks) {
+  const byCategory = new Map();
+  for (const chunk of chunks ?? []) {
+    const cat = String(chunk?.category ?? "").trim() || "Product";
+    const text = `${chunk?.title ?? ""} ${chunk?.content ?? ""}`;
+    if (!byCategory.has(cat)) byCategory.set(cat, new Set());
+    const bucket = byCategory.get(cat);
+    for (const match of text.matchAll(MODEL_TOKEN_PATTERN)) {
+      const token = match[1].toUpperCase();
+      if (MODEL_TOKEN_DENYLIST.has(token)) continue;
+      bucket.add(token);
+    }
+  }
+  const out = {};
+  for (const [cat, set] of byCategory) {
+    if (set.size === 0) continue;
+    out[cat] = Array.from(set).slice(0, 30);
+  }
+  return out;
+}
+
+export function buildVerifiedModelsBlock(chunks) {
+  const grouped = extractModelsByCategory(chunks);
+  const categories = Object.keys(grouped);
+  if (categories.length === 0) {
+    return `\n\n[VERIFIED_MODELS — authoritative allowlist]\n(No explicit model numbers were extracted from KB. Describe product families only and set exact model to null; add a note that distributor must confirm.)`;
+  }
+  const lines = categories.map((cat) => `- ${cat}: ${grouped[cat].join(", ")}`);
+  return `\n\n[VERIFIED_MODELS — authoritative allowlist]\nYou MUST select exact model numbers ONLY from this list. If the same family has multiple variants (e.g., DD3300, DD6400, DD6410), pick the newest/highest variant unless customer sizing explicitly requires a smaller one. Never recall obsolete or alternate SKUs from training data when a KB variant exists.\n${lines.join("\n")}`;
+}
+
 export async function runSolutionAgent(requirements, options = {}) {
   const prompt = await loadPrompt();
   const { chunks: knowledge, retrieval_mode } = await getKnowledge(requirements, options.orgId ?? null);
   const projectObjective = formatProjectObjective();
+  const verifiedModelsBlock = buildVerifiedModelsBlock(knowledge);
 
   let specialistContext = "";
   if (Array.isArray(options.specialistBriefs) && options.specialistBriefs.length > 0) {
@@ -333,7 +372,7 @@ export async function runSolutionAgent(requirements, options = {}) {
       let currentOutput = await generateJsonWithOpenAI({
         systemPrompt: `${prompt}\n\n[PROJECT OBJECTIVE]\n${projectObjective}${wikiContext}\n\n[KNOWLEDGE BASE]\n${knowledge
           .map((entry) => `${entry.title}\n${entry.content}`)
-          .join("\n\n")}${specialistContext}${constraintContext}${memoryContext}`,
+          .join("\n\n")}${verifiedModelsBlock}${specialistContext}${constraintContext}${memoryContext}`,
         userPrompt: JSON.stringify(requirements, null, 2),
         model: config.openai.models.solution,
         textFormat: solutionTextFormat,
