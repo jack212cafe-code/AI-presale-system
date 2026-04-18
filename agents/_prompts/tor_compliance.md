@@ -72,3 +72,13 @@ kb_coverage values:
 - "found" — KB has relevant product data
 - "partial" — KB has some data but incomplete
 - "not_found" — no relevant product in KB; presale must add datasheet
+
+## Evidence citation (REQUIRED)
+
+For every compliance_check, you MUST populate:
+- `evidence_quote`: a **verbatim** passage copied character-for-character from the `[KNOWLEDGE BASE — Product Datasheets]` block above. Do not paraphrase. Do not translate. Quote length: 20–200 characters, enough to prove the product meets the requirement.
+- `evidence_source_file`: the exact filename shown in the `### <title>` heading of the chunk that contains your quote. If the chunk does not list a filename, use the heading text verbatim.
+
+If you cannot find a verbatim passage that supports the check, set `status: "review"`, `evidence_quote: ""`, `evidence_source_file: ""`, and explain in `note` that the KB does not contain the information.
+
+Never invent a quote. Never fix up grammar, spacing, or numbers in the quote. The presale engineer will verify each quote against the original datasheet.

@@ -7,6 +7,7 @@ import { extractTextFromBuffer } from '../knowledge_base/raw-import-lib.js';
 
 const torReports = new Map();
 const TOR_REPORT_TTL_MS = 24 * 60 * 60 * 1000;
+const PDF_SCAN_DETECT_MIN_CHARS = 100;
 setInterval(() => {
   const cutoff = Date.now() - TOR_REPORT_TTL_MS;
   for (const [id, entry] of torReports) {
@@ -40,13 +41,14 @@ export async function handle(request, url, response) {
       const buffer = Buffer.from(b64, "base64");
       const text = await extractTextFromBuffer(buffer, ext);
 
-      if (ext === ".pdf" && text.trim().length < 100) {
+      if (ext === ".pdf" && text.trim().length < PDF_SCAN_DETECT_MIN_CHARS) {
         return json(response, 200, { ok: true, text: "", warning: "PDF อาจเป็น scan image — ยังไม่รองรับ OCR ใน MVP. กรุณา paste ข้อความเอง" }), true;
       }
 
       return json(response, 200, { ok: true, text }), true;
     } catch (error) {
-      return json(response, 400, { ok: false, error: `ไม่สามารถอ่านไฟล์ได้: ${error.message}` }), true;
+      console.error("[TOR extract] parse error:", error);
+      return json(response, 400, { ok: false, error: "ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบไฟล์หรือ paste ข้อความเอง" }), true;
     }
   }
 

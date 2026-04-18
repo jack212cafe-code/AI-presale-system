@@ -79,9 +79,12 @@ const torComplianceSchema = {
             tor_requirement: { type: "string" },
             product_value: { type: "string" },
             status: { type: "string" },
-            note: { type: "string" }
+            note: { type: "string" },
+            evidence_quote: { type: "string" },
+            evidence_source_file: { type: "string" }
           },
-          required: ["spec_label", "tor_requirement", "product_value", "status", "note"]
+          required: ["spec_label", "tor_requirement", "product_value", "status", "note",
+                     "evidence_quote", "evidence_source_file"]
         }
       },
       overall_status: { type: "string" },
@@ -162,7 +165,9 @@ async function runTorComplianceItemAgent(item, options = {}) {
           tor_requirement: `${s.operator} ${s.value} ${s.unit}`,
           product_value: `${s.value} ${s.unit} (mock)`,
           status: "review",
-          note: "Mock mode — กรุณาเพิ่ม datasheet ใน KB"
+          note: "Mock mode — กรุณาเพิ่ม datasheet ใน KB",
+          evidence_quote: "",
+          evidence_source_file: ""
         })),
         overall_status: "comply_with_review",
         compliance_statement_th: `${item.category} comply (Mock) — กรุณาเพิ่ม datasheet จริงใน KB`,
