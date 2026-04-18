@@ -1353,6 +1353,8 @@
       <div class="composer-inner">
         <div class="context-chips" id="context-chips"></div>
         <button class="tor-toggle-btn" id="tor-toggle-btn">📋 TOR Mode</button>
+        <button class="tor-toggle-btn" id="kb-upload-btn" title="อัปโหลดเอกสาร KB (≤15MB: pdf/md/txt/docx)">📎 Upload KB</button>
+        <input type="file" id="kb-upload-input" accept=".pdf,.md,.txt,.docx" style="display:none" />
         <div class="prompt-wrap">
           <textarea
             class="prompt-box"
@@ -1499,6 +1501,60 @@
         chip.appendChild(btn);
       }
       chipsEl.appendChild(chip);
+    }
+
+    // ─────────── KB UPLOAD (FE-1) ───────────
+    const kbUploadBtn = document.getElementById('kb-upload-btn');
+    const kbUploadInput = document.getElementById('kb-upload-input');
+    const kbErrorBanner = document.getElementById('error-banner');
+    function showKbMessage(text, isError){
+      if (!kbErrorBanner) return;
+      kbErrorBanner.textContent = text;
+      kbErrorBanner.style.display = 'block';
+      kbErrorBanner.style.background = isError ? '#fdecea' : '#e7f5ee';
+      kbErrorBanner.style.color = isError ? '#b71c1c' : '#1b5e20';
+      setTimeout(()=>{ kbErrorBanner.style.display = 'none'; }, 6000);
+    }
+    if (kbUploadBtn && kbUploadInput) {
+      kbUploadBtn.addEventListener('click', ()=> kbUploadInput.click());
+      kbUploadInput.addEventListener('change', async (e)=>{
+        const file = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (!file) return;
+        const MAX = 15 * 1024 * 1024;
+        if (file.size > MAX) {
+          showKbMessage(`ไฟล์ใหญ่เกิน 15MB (${(file.size/1024/1024).toFixed(1)}MB)`, true);
+          return;
+        }
+        kbUploadBtn.disabled = true;
+        const prevLabel = kbUploadBtn.textContent;
+        kbUploadBtn.textContent = '⏳ กำลังอัปโหลด...';
+        try {
+          const b64 = await new Promise((resolve, reject)=>{
+            const reader = new FileReader();
+            reader.onload = ()=> resolve(String(reader.result).split(',')[1] || '');
+            reader.onerror = ()=> reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+            reader.readAsDataURL(file);
+          });
+          const res = await fetch('/api/admin/kb/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ file_name: file.name, content_base64: b64 })
+          });
+          const data = await res.json().catch(()=>({}));
+          if (!res.ok || !data.ok) {
+            showKbMessage(data.error || `อัปโหลดล้มเหลว (HTTP ${res.status})`, true);
+          } else {
+            showKbMessage(`อัปโหลด ${file.name} สำเร็จ — job ${data.job_id}`, false);
+          }
+        } catch (err) {
+          showKbMessage(err.message || 'อัปโหลดล้มเหลว', true);
+        } finally {
+          kbUploadBtn.disabled = false;
+          kbUploadBtn.textContent = prevLabel;
+        }
+      });
     }
 
     // Watch TOR panel

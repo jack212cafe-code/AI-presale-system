@@ -124,7 +124,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/kb/documents") {
-    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
+    if (!requireRole(request, response, ["engineer", "admin", "superadmin"])) return true;
     try {
       const user = getSessionUser(request);
       const orgId = user.role === "superadmin" ? null : (user.orgId ?? null);
@@ -137,7 +137,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/kb/upload") {
-    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
+    if (!requireRole(request, response, ["engineer", "admin", "superadmin"])) return true;
     try {
       const rawPayload = await parseBody(request);
       const payload = normalizeKnowledgeUploadPayload(rawPayload);
@@ -175,7 +175,7 @@ export async function handle(request, url, response) {
   }
 
   if (request.method === "GET" && url.pathname.startsWith("/api/admin/kb/jobs/")) {
-    if (!requireRole(request, response, ["admin", "superadmin"])) return true;
+    if (!requireRole(request, response, ["engineer", "admin", "superadmin"])) return true;
     const jobId = url.pathname.slice("/api/admin/kb/jobs/".length);
     const job = getJob(jobId);
     if (!job) {
