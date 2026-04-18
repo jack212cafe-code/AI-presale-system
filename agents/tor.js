@@ -10,6 +10,34 @@ import { getKnowledge } from "./solution.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ── Evidence Quote Verifier ─────────────────────────────────────────────────
+
+export function verifyEvidenceQuotes(item, chunks) {
+  const normalized = chunks.map(c => normalizeWhitespace(String(c.content || "")));
+  const checks = (item.compliance_checks || []).map(check => {
+    const quote = String(check.evidence_quote || "").trim();
+    if (!quote) return check;
+    const nq = normalizeWhitespace(quote);
+    const found = normalized.some(c => c.includes(nq));
+    if (found) return check;
+    if (check.status === "not_comply") return check;
+    return { ...check, status: "review" };
+  });
+  const reviewNotes = [...(item.presale_review_notes || [])];
+  (item.compliance_checks || []).forEach((orig, i) => {
+    if (!orig.evidence_quote) return;
+    const still = checks[i];
+    if (still.status !== orig.status) {
+      reviewNotes.push(`Evidence quote for ${orig.spec_label} could not be verified against KB — check datasheet manually`);
+    }
+  });
+  return { ...item, compliance_checks: checks, presale_review_notes: reviewNotes };
+}
+
+function normalizeWhitespace(s) {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 // ── Schemas ────────────────────────────────────────────────────────────────
 
 const torParserSchema = {
@@ -137,8 +165,10 @@ async function runTorComplianceItemAgent(item, options = {}) {
   // Retrieve KB knowledge relevant to this item's category
   const query = buildKbQuery(item.category, item.specs);
   let kbContext = "";
+  let chunks = [];
   try {
-    const { chunks } = await getKnowledge({ use_cases: [query], _kb_hint: query }, options.orgId ?? null);
+    const result = await getKnowledge({ use_cases: [query], _kb_hint: query }, options.orgId ?? null);
+    chunks = result.chunks;
     if (chunks.length > 0) {
       kbContext = `\n\n[KNOWLEDGE BASE — Product Datasheets]\nUse these spec sheets to find compliant products. Only recommend models that appear here.\n\n${chunks.map(c => `### ${c.title}\n${c.content}`).join("\n\n")}`;
     }
@@ -146,7 +176,7 @@ async function runTorComplianceItemAgent(item, options = {}) {
 
   const userPrompt = JSON.stringify(item, null, 2);
 
-  return withAgentLogging(
+  const raw = await withAgentLogging(
     { agentName: "tor_compliance", projectId: options.projectId, modelUsed: config.openai.models.specialist, input: { item_no: item.item_no, category: item.category } },
     () => generateJsonWithOpenAI({
       systemPrompt: prompt + kbContext,
@@ -176,6 +206,8 @@ async function runTorComplianceItemAgent(item, options = {}) {
       })
     })
   );
+
+  return verifyEvidenceQuotes(raw, chunks);
 }
 
 function buildKbQuery(category, specs) {
