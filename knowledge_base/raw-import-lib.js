@@ -162,6 +162,18 @@ export async function extractTextFromFile(absolutePath) {
   throw new Error(`Unsupported file extension: ${extension}`);
 }
 
+/**
+ * Extract plain text from an in-memory file buffer.
+ * Used by `POST /api/tor/extract` to turn a user-uploaded TOR into text
+ * without touching the filesystem. Supports .pdf, .docx, .txt, .md.
+ *
+ * NOTE: For image-only PDFs this returns "" instead of throwing — the
+ * HTTP caller uses that as its scan-detection signal.
+ *
+ * @param {Buffer} buffer
+ * @param {string} extension  e.g. ".pdf", ".docx", ".txt", ".md"
+ * @returns {Promise<string>}
+ */
 export async function extractTextFromBuffer(buffer, extension) {
   const ext = String(extension || "").toLowerCase();
 
@@ -173,6 +185,8 @@ export async function extractTextFromBuffer(buffer, extension) {
     const pdfParse = getDependency("pdf-parse");
     try {
       const result = await withTimeout(pdfParse(buffer), PARSE_TIMEOUT_MS, "<buffer>.pdf");
+      // Unlike extractTextFromFile we do NOT throw on empty text — the caller
+      // (POST /api/tor/extract) treats "empty" as the scan-detection signal.
       return cleanText(result.text || "");
     } catch (error) {
       if (error.message.includes("Parse timeout")) {
