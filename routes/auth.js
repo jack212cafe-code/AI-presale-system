@@ -123,7 +123,7 @@ export async function handle(request, url, response) {
       const displayName = username;
       const { data: userData, error: userError } = await client
         .from("users")
-        .insert({ username, password_hash, display_name: displayName, role: "engineer", org_id: orgId })
+        .insert({ username, password_hash, display_name: displayName, role: "admin", org_id: orgId })
         .select("id")
         .single();
       if (userError || !userData) {
@@ -131,7 +131,7 @@ export async function handle(request, url, response) {
         return json(response, 500, { ok: false, error: "สร้างผู้ใช้ไม่สำเร็จ กรุณาลองใหม่" }), true;
       }
 
-      const token = await createUserSession(userData.id, displayName, "engineer");
+      const token = await createUserSession(userData.id, displayName, "admin");
       json(
         response,
         200,
