@@ -27,7 +27,7 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const user = getSessionUser(request);
     if (!(await requireRateLimitDb(request, response, user.userId, "pipeline"))) return true;
-    if (!(await requireProjectQuota(response, user.userId))) return true;
+    if (!(await requireProjectQuota(response, user.userId, "growth", user.role))) return true;
     let projectId = null;
     let project = null;
     let stageFailed = null;
@@ -116,7 +116,7 @@ export async function handle(request, url, response) {
         }), true;
       }
       if (!payload.project_id) {
-        if (!(await requireProjectQuota(response, user.userId))) return true;
+        if (!(await requireProjectQuota(response, user.userId, "growth", user.role))) return true;
       }
       response.writeHead(200, {
         "Content-Type": "text/event-stream; charset=utf-8",
