@@ -30,11 +30,11 @@ export async function handle(request, url, response) {
         return json(response, 401, { ok: false, error: "Invalid credentials" }), true;
       }
 
-      const token = await createUserSession(user.id, user.display_name);
+      const token = await createUserSession(user.id, user.display_name, user.role);
       json(
         response,
         200,
-        { ok: true, user: { id: user.id, username: user.username, display_name: user.display_name } },
+        { ok: true, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role } },
         { "Set-Cookie": buildUserSessionCookie(token) }
       );
     } catch (error) {
@@ -131,7 +131,7 @@ export async function handle(request, url, response) {
         return json(response, 500, { ok: false, error: "สร้างผู้ใช้ไม่สำเร็จ กรุณาลองใหม่" }), true;
       }
 
-      const token = await createUserSession(userData.id, displayName);
+      const token = await createUserSession(userData.id, displayName, "engineer");
       json(
         response,
         200,
