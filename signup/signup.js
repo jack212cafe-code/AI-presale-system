@@ -52,7 +52,7 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
-    window.location.replace("/intake");
+    window.location.replace("/chat");
   } catch (error) {
     showError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
     signupBtn.disabled = false;
