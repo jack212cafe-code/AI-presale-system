@@ -162,6 +162,39 @@ export async function extractTextFromFile(absolutePath) {
   throw new Error(`Unsupported file extension: ${extension}`);
 }
 
+export async function extractTextFromBuffer(buffer, extension) {
+  const ext = String(extension || "").toLowerCase();
+
+  if (ext === ".md" || ext === ".txt") {
+    return cleanText(buffer.toString("utf8"));
+  }
+
+  if (ext === ".pdf") {
+    const pdfParse = getDependency("pdf-parse");
+    try {
+      const result = await withTimeout(pdfParse(buffer), PARSE_TIMEOUT_MS, "<buffer>.pdf");
+      return cleanText(result.text || "");
+    } catch (error) {
+      if (error.message.includes("Parse timeout")) {
+        throw new Error(`PDF is too complex to parse within ${PARSE_TIMEOUT_MS}ms.`);
+      }
+      throw new Error(`PDF parsing failed: ${error.message}`);
+    }
+  }
+
+  if (ext === ".docx") {
+    const mammoth = getDependency("mammoth");
+    try {
+      const result = await withTimeout(mammoth.extractRawText({ buffer }), PARSE_TIMEOUT_MS, "<buffer>.docx");
+      return cleanText(result.value || "");
+    } catch (error) {
+      throw new Error(`DOCX parse failed: ${error.message}`);
+    }
+  }
+
+  throw new Error(`Unsupported extension: ${ext}`);
+}
+
 const EMBED_TIMEOUT_MS = 30000;
 const PARSE_TIMEOUT_MS = 60000;
 
