@@ -1,8 +1,8 @@
 import { runTorPipeline } from '../agents/tor.js';
 import { generateTorComplianceCsv, getTorExportFilename } from '../lib/tor-export.js';
 import { requireUserAuth, json, parseBody } from './helpers.js';
-import { getSessionUserId } from '../lib/user-auth.js';
-import { requireRateLimit } from '../lib/rate-limit.js';
+import { getSessionUserId, getSessionUser } from '../lib/user-auth.js';
+import { requireRateLimit, requireRateLimitDb } from '../lib/rate-limit.js';
 
 const torReports = new Map();
 const TOR_REPORT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -16,7 +16,7 @@ setInterval(() => {
 export async function handle(request, url, response) {
   if (request.method === "POST" && url.pathname === "/api/tor") {
     if (!requireUserAuth(request, response)) return true;
-    if (!requireRateLimit(request, response, getSessionUserId(request), "pipeline")) return true;
+    if (!(await requireRateLimitDb(request, response, getSessionUserId(request), "pipeline"))) return true;
     try {
       const payload = await parseBody(request);
       if (!payload.tor_text?.trim()) return json(response, 400, { ok: false, error: "tor_text is required" }), true;
@@ -24,8 +24,10 @@ export async function handle(request, url, response) {
       response.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no" });
       const sendEvent = (data) => response.write(`data: ${JSON.stringify(data)}\n\n`);
 
+      const user = getSessionUser(request);
       const report = await runTorPipeline(payload.tor_text, {
-        onProgress: (step, total, label) => sendEvent({ type: "progress", step, total, label })
+        onProgress: (step, total, label) => sendEvent({ type: "progress", step, total, label }),
+        orgId: user?.orgId ?? null
       });
 
       torReports.set(report.tor_id, { report, ts: Date.now() });

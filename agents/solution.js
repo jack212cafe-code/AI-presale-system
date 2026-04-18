@@ -77,7 +77,7 @@ const solutionTextFormat = {
   }
 };
 
-export async function _getKnowledgeWithDeps(requirements, deps) {
+export async function _getKnowledgeWithDeps(requirements, deps, orgId = null) {
   const { embedQueryFn, retrieveVectorFn, retrieveLocalFn, hasSupabaseFn, hasEmbeddingFn } = deps;
   const useCases = Array.isArray(requirements.use_cases) ? requirements.use_cases : [];
   const _t = Date.now();
@@ -103,7 +103,7 @@ export async function _getKnowledgeWithDeps(requirements, deps) {
           console.log(`[solution:kb] embed started "${useCase}"`);
           const embedding = await embedQueryFn(useCase);
           console.log(`[solution:kb] +${Date.now()-_t}ms embed done, vector-search started "${useCase}"`);
-          const r = await retrieveVectorFn(embedding, 5);
+          const r = await retrieveVectorFn(embedding, 5, orgId);
           console.log(`[solution:kb] +${Date.now()-_t}ms vector-search done "${useCase}" hits=${r.length}`);
           return r;
         })
@@ -158,7 +158,7 @@ export async function _getKnowledgeWithDeps(requirements, deps) {
   return { chunks: finalLocalChunks, retrieval_mode: "local_fallback" };
 }
 
-export async function getKnowledge(requirements) {
+export async function getKnowledge(requirements, orgId = null) {
   return _getKnowledgeWithDeps(requirements, {
     embedQueryFn: embedQuery,
     retrieveVectorFn: retrieveKnowledgeFromVector,
@@ -166,7 +166,7 @@ export async function getKnowledge(requirements) {
     hasSupabaseFn: hasSupabaseAdmin,
     hasEmbeddingFn: hasEmbeddingConfig,
     getWikiPagesForRequirements: getWikiPagesForRequirements
-  });
+  }, orgId);
 }
 
 function buildMockSolution(requirements, knowledge, retrieval_mode) {
@@ -287,7 +287,7 @@ export function buildSolutionMemoryContext(requirements) {
 
 export async function runSolutionAgent(requirements, options = {}) {
   const prompt = await loadPrompt();
-  const { chunks: knowledge, retrieval_mode } = await getKnowledge(requirements);
+  const { chunks: knowledge, retrieval_mode } = await getKnowledge(requirements, options.orgId ?? null);
   const projectObjective = formatProjectObjective();
 
   let specialistContext = "";

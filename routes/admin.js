@@ -91,7 +91,9 @@ export async function handle(request, url, response) {
   if (request.method === "GET" && url.pathname === "/api/admin/audit") {
     if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
-      const logs = await readAgentLogs(200);
+      const user = getSessionUser(request);
+      const orgId = user.role === "superadmin" ? null : (user.orgId ?? null);
+      const logs = await readAgentLogs(200, orgId);
       json(response, 200, { ok: true, logs });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
@@ -124,7 +126,9 @@ export async function handle(request, url, response) {
   if (request.method === "GET" && url.pathname === "/api/admin/kb/documents") {
     if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
-      const documents = await listKnowledgeDocuments();
+      const user = getSessionUser(request);
+      const orgId = user.role === "superadmin" ? null : (user.orgId ?? null);
+      const documents = await listKnowledgeDocuments(orgId);
       json(response, 200, { ok: true, documents });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
@@ -248,7 +252,9 @@ export async function handle(request, url, response) {
   if (request.method === "GET" && url.pathname === "/api/admin/feedback") {
     if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
-      const feedback = await getAdminFeedbackSummary();
+      const user = getSessionUser(request);
+      const orgId = user.role === "superadmin" ? null : (user.orgId ?? null);
+      const feedback = await getAdminFeedbackSummary(orgId);
       json(response, 200, { ok: true, feedback });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
@@ -263,10 +269,14 @@ export async function handle(request, url, response) {
       if (!client) {
         return json(response, 200, { ok: true, users: [] });
       }
-      const { data, error } = await client
+      const user = getSessionUser(request);
+      let query = client
         .from("users")
-        .select("id, username, display_name, role, created_at")
-        .order("created_at", { ascending: true });
+        .select("id, username, display_name, role, org_id, created_at");
+      if (user.role !== "superadmin") {
+        query = query.eq("org_id", user.orgId);
+      }
+      const { data, error } = await query.order("created_at", { ascending: true });
       if (error) throw error;
       json(response, 200, { ok: true, users: data });
     } catch (error) {
@@ -278,7 +288,7 @@ export async function handle(request, url, response) {
   if (request.method === "POST" && url.pathname === "/api/admin/users") {
     if (!requireRole(request, response, ["admin", "superadmin"])) return true;
     try {
-      const { username, password, display_name, role } = await parseBody(request);
+      const { username, password, display_name, role, org_id: bodyOrgId } = await parseBody(request);
       if (!username || !password || !display_name) {
         return json(response, 400, { ok: false, error: "username, password, display_name required" }), true;
       }
@@ -288,12 +298,17 @@ export async function handle(request, url, response) {
       }
       const client = getSupabaseAdmin();
       if (!client) return json(response, 501, { ok: false, error: "User management requires Supabase" }), true;
+      const user = getSessionUser(request);
+      const orgId = user.role === "superadmin" ? (bodyOrgId ?? null) : user.orgId;
+      if (!orgId && user.role !== "superadmin") {
+        return json(response, 400, { ok: false, error: "Admin must belong to an organization" }), true;
+      }
       const { default: bcrypt } = await import("bcryptjs");
       const password_hash = await bcrypt.hash(password, 12);
       const { data, error } = await client
         .from("users")
-        .insert({ username, password_hash, display_name, role: role ?? "engineer" })
-        .select("id, username, display_name, role, created_at")
+        .insert({ username, password_hash, display_name, role: role ?? "engineer", org_id: orgId })
+        .select("id, username, display_name, role, org_id, created_at")
         .single();
       if (error) {
         if (error.code === "23505") return json(response, 409, { ok: false, error: "Username already exists" }), true;
@@ -317,6 +332,13 @@ export async function handle(request, url, response) {
       }
       const client = getSupabaseAdmin();
       if (!client) return json(response, 501, { ok: false, error: "User management requires Supabase" }), true;
+      const adminUser = getSessionUser(request);
+      if (adminUser.role !== "superadmin") {
+        const { data: target } = await client.from("users").select("org_id").eq("id", userId).maybeSingle();
+        if (!target || target.org_id !== adminUser.orgId) {
+          return json(response, 404, { ok: false, error: "User not found" }), true;
+        }
+      }
       const patch = {};
       if (role) patch.role = role;
       if (display_name) patch.display_name = display_name;
@@ -325,7 +347,7 @@ export async function handle(request, url, response) {
         .from("users")
         .update(patch)
         .eq("id", userId)
-        .select("id, username, display_name, role")
+        .select("id, username, display_name, role, org_id")
         .single();
       if (error) throw error;
       if (!data) return json(response, 404, { ok: false, error: "User not found" }), true;
@@ -346,6 +368,13 @@ export async function handle(request, url, response) {
       }
       const client = getSupabaseAdmin();
       if (!client) return json(response, 501, { ok: false, error: "User management requires Supabase" }), true;
+      const adminUser = getSessionUser(request);
+      if (adminUser.role !== "superadmin") {
+        const { data: target } = await client.from("users").select("org_id").eq("id", userId).maybeSingle();
+        if (!target || target.org_id !== adminUser.orgId) {
+          return json(response, 404, { ok: false, error: "User not found" }), true;
+        }
+      }
       const { error } = await client.from("users").delete().eq("id", userId);
       if (error) throw error;
       json(response, 200, { ok: true });

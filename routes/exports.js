@@ -7,6 +7,7 @@ import { FinancialAnalystAgent } from '../lib/bom-export.js';
 import { buildSolutionBuffer } from '../lib/solution-export.js';
 import { buildSpecSheetBuffer } from '../lib/specsheet.js';
 import { requireUserAuth, json } from './helpers.js';
+import { getSessionUser } from '../lib/user-auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +23,8 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const projectId = url.pathname.split("/")[3];
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project || !project.proposal_url) {
         return json(response, 404, { ok: false, error: "Proposal not found" }), true;
       }
@@ -45,7 +47,8 @@ export async function handle(request, url, response) {
     const projectId = url.pathname.split("/")[3];
     const type = url.searchParams.get("type") || "proposal";
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project) return json(response, 404, { ok: false, error: "Project not found" }), true;
 
       let pdfBuffer;
@@ -84,7 +87,8 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const projectId = url.pathname.split("/")[3];
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project || !project.bom_json?.rows?.length) {
         return json(response, 404, { ok: false, error: "BOM not found" }), true;
       }
@@ -105,7 +109,8 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const projectId = url.pathname.split("/")[3];
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project || !project.solution_json) {
         return json(response, 404, { ok: false, error: "Solution not found" }), true;
       }
@@ -133,7 +138,8 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const projectId = url.pathname.split("/")[3];
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project || !project.solution_json) {
         return json(response, 404, { ok: false, error: "Solution not found" }), true;
       }

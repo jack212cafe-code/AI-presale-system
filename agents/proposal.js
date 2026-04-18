@@ -87,6 +87,15 @@ function buildMockDraft(project, solution) {
 export async function runProposalAgent(project, requirements, solution, bom, options = {}) {
   const prompt = await loadPrompt();
 
+  const bomRows = Array.isArray(bom?.rows) ? bom.rows.filter(r => r.category !== "GROUNDING WARNING") : [];
+  if (bomRows.length === 0) {
+    throw new Error("Proposal aborted: BOM is empty — cannot generate proposal without a bill of materials. Re-run BOM agent.");
+  }
+  const hasCompute = bomRows.some(r => String(r.category || "").toLowerCase().includes("compute"));
+  if (!hasCompute) {
+    throw new Error("Proposal aborted: BOM has no Compute rows — every solution requires at least one compute node. Re-run BOM agent.");
+  }
+
   const selectedIdx = solution.selected_option ?? 0;
   const selectedOption = solution.options?.[selectedIdx] ?? solution.options?.[0];
 

@@ -21,6 +21,7 @@ Produce a presale-grade BOM for the selected solution using only verified vendor
 - Storage rows should specify the storage family and the usable-capacity intent.
 - Backup rows must clearly indicate immutable backup capability when requested.
 - Licensing rows must state the required Microsoft/Veeam licensing model.
+- **Mandatory backup server rule:** If any backup software (Veeam, Commvault, Rubrik, NetBackup, Cohesity, etc.) appears under `[Licensing]`, you MUST also include a backup server row (physical server or VM) under `[Compute]` to host that software. Never list backup licensing without the corresponding compute target — distributors will reject the BOM.
 - If a model number is not explicitly verified in the KB, use the product family and note that distributor confirmation is required.
 
 ## Truth order

@@ -135,7 +135,7 @@ async function runTorComplianceItemAgent(item, options = {}) {
   const query = buildKbQuery(item.category, item.specs);
   let kbContext = "";
   try {
-    const { chunks } = await getKnowledge({ use_cases: [query], _kb_hint: query });
+    const { chunks } = await getKnowledge({ use_cases: [query], _kb_hint: query }, options.orgId ?? null);
     if (chunks.length > 0) {
       kbContext = `\n\n[KNOWLEDGE BASE — Product Datasheets]\nUse these spec sheets to find compliant products. Only recommend models that appear here.\n\n${chunks.map(c => `### ${c.title}\n${c.content}`).join("\n\n")}`;
     }

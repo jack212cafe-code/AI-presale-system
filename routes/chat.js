@@ -18,14 +18,16 @@ import { validateHciComputeDrives, validateBackupServer, validateSwitchAddition 
 import { handleChatMessage } from '../lib/chat.js';
 import { requireUserAuth, json, parseBody } from './helpers.js';
 import { getSessionUserId, getSessionUser } from '../lib/user-auth.js';
-import { requireRateLimit } from '../lib/rate-limit.js';
+import { requireRateLimit, requireRateLimitDb } from '../lib/rate-limit.js';
+import { requireProjectQuota } from '../lib/quota-manager.js';
 import { config } from '../lib/config.js';
 
 export async function handle(request, url, response) {
   if (request.method === "POST" && url.pathname === "/api/pipeline") {
     if (!requireUserAuth(request, response)) return true;
     const user = getSessionUser(request);
-    if (!requireRateLimit(request, response, user.userId, "pipeline")) return true;
+    if (!(await requireRateLimitDb(request, response, user.userId, "pipeline"))) return true;
+    if (!(await requireProjectQuota(response, user.userId))) return true;
     let projectId = null;
     let project = null;
     let stageFailed = null;
@@ -43,9 +45,9 @@ export async function handle(request, url, response) {
       project = discoveryResult.project ?? project;
 
       stageFailed = "solution";
-      const specialistBriefs = await runAllSpecialists(requirements, { projectId });
+      const specialistBriefs = await runAllSpecialists(requirements, { projectId, orgId: user.orgId });
       await persistSpecialistBriefs(projectId, specialistBriefs);
-      const solution = await runSolutionAgent(requirements, { projectId, specialistBriefs });
+      const solution = await runSolutionAgent(requirements, { projectId, specialistBriefs, orgId: user.orgId });
       await persistSolutionJson(projectId, solution);
 
       stageFailed = "bom";
@@ -70,7 +72,7 @@ export async function handle(request, url, response) {
       stageFailed = "proposal";
       const proposalResult = await runProposalAgent(intake, requirements, solution, bom, { projectId, budgetWarning });
 
-      const finalProject = await getProjectById(projectId);
+      const finalProject = await getProjectById(projectId, user.orgId);
 
       json(response, 201, {
         ok: true,
@@ -84,7 +86,7 @@ export async function handle(request, url, response) {
         bom_warnings: bomWarnings.length ? bomWarnings : null
       });
     } catch (error) {
-      const partialProject = projectId ? await getProjectById(projectId).catch(() => project) : project;
+      const partialProject = projectId ? await getProjectById(projectId, user.orgId).catch(() => project) : project;
       json(response, 500, {
         ok: false,
         stage_failed: stageFailed,
@@ -98,22 +100,23 @@ export async function handle(request, url, response) {
   if (request.method === "POST" && url.pathname === "/api/chat") {
     if (!requireUserAuth(request, response)) return true;
     const user = getSessionUser(request);
-    if (!requireRateLimit(request, response, user.userId, "pipeline")) return true;
+    if (!(await requireRateLimitDb(request, response, user.userId, "pipeline"))) return true;
     try {
       const payload = await parseBody(request);
       if (!payload.message || typeof payload.message !== "string" || !payload.message.trim()) {
         return json(response, 400, { ok: false, error: "message is required" }), true;
       }
-      if (payload.project_id) {
-        const { getUserMonthlyCost } = await import('../lib/db/agents.js');
-        const monthlyCost = await getUserMonthlyCost(user.userId);
-        const monthlyBudget = config.openai.userMonthlyBudget ?? 15;
-        if (monthlyCost >= monthlyBudget) {
-          return json(response, 429, {
-            ok: false,
-            error: "You have reached your monthly usage limit."
-          }), true;
-        }
+      const { getUserMonthlyCost } = await import('../lib/db/agents.js');
+      const monthlyCost = await getUserMonthlyCost(user.userId);
+      const monthlyBudget = config.openai.userMonthlyBudget ?? 15;
+      if (monthlyCost >= monthlyBudget) {
+        return json(response, 429, {
+          ok: false,
+          error: "You have reached your monthly usage limit."
+        }), true;
+      }
+      if (!payload.project_id) {
+        if (!(await requireProjectQuota(response, user.userId))) return true;
       }
       response.writeHead(200, {
         "Content-Type": "text/event-stream; charset=utf-8",

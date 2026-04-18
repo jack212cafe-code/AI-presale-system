@@ -234,7 +234,7 @@ const DOMAIN_KB_KEYWORDS = {
   lenovo_presale: ["thinksystem", "thinkagile", "lenovo", "nutanix"]
 };
 
-async function retrieveKbForDomain(domain, requirements) {
+async function retrieveKbForDomain(domain, requirements, orgId = null) {
   const _t = Date.now();
   console.log(`[kb:${domain}] started`);
   const chunks = new Map();
@@ -255,10 +255,14 @@ async function retrieveKbForDomain(domain, requirements) {
           vendorChunks = [];
           for (const kw of keywords) {
             console.log(`[kb:${domain}] +${Date.now()-_t}ms ilike kw="${kw}"`);
-            const { data } = await client.from("knowledge_base")
+            let ilikeQuery = client.from("knowledge_base")
               .select("source_key, title, content, category, metadata")
               .ilike("source_key", `%${kw}%`)
-              .not("content", "ilike", "-- % of %")
+              .not("content", "ilike", "-- % of %");
+            if (orgId !== null) {
+              ilikeQuery = ilikeQuery.or(`org_id.is.null,org_id.eq.${orgId}`);
+            }
+            const { data } = await ilikeQuery
               .order("source_key", { ascending: true })
               .limit(4);
             console.log(`[kb:${domain}] +${Date.now()-_t}ms ilike done kw="${kw}" rows=${data?.length ?? 0}`);
@@ -268,7 +272,7 @@ async function retrieveKbForDomain(domain, requirements) {
           }
         }
       } else {
-        vendorChunks = await retrieveKnowledgeByVendorFilter(vendorNames, 3);
+        vendorChunks = await retrieveKnowledgeByVendorFilter(vendorNames, 3, orgId);
       }
       for (const c of vendorChunks ?? []) chunks.set(c.source_key, c);
     } catch { /* KB unavailable */ }
@@ -279,7 +283,7 @@ async function retrieveKbForDomain(domain, requirements) {
     const query = DOMAIN_VECTOR_QUERY[domain];
     if (query) {
       const reqWithQuery = { ...requirements, _kb_hint: query };
-      const { chunks: vectorChunks } = await getKnowledge(reqWithQuery);
+      const { chunks: vectorChunks } = await getKnowledge(reqWithQuery, orgId);
       for (const c of vectorChunks) {
         if (!chunks.has(c.source_key)) chunks.set(c.source_key, c);
       }
@@ -315,7 +319,7 @@ export async function runSpecialistAgent(domain, requirements, options = {}) {
   const prompt = await readFile(promptPath, "utf8");
 
   console.log(`[specialist:${domain}] +${Date.now()-_t}ms kb-fetch started`);
-  const kbChunks = await retrieveKbForDomain(domain, requirements);
+  const kbChunks = await retrieveKbForDomain(domain, requirements, options.orgId ?? null);
   console.log(`[specialist:${domain}] +${Date.now()-_t}ms kb-fetch done chunks=${kbChunks.length}`);
 
   let kbContext = "";

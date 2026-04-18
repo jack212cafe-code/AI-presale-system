@@ -73,19 +73,16 @@ export async function handle(request, url, response) {
         return json(response, 400, { ok: false, error: "project_id is required" }), true;
       }
 
-      const project = await getProjectById(rawPayload.project_id);
+      const user = getSessionUser(request);
+      const project = await getProjectById(rawPayload.project_id, user.orgId);
       if (!project) {
         return json(response, 404, { ok: false, error: "Project not found" }), true;
-      }
-      const user = getSessionUser(request);
-      if (project.org_id !== user.orgId) {
-        return json(response, 403, { ok: false, error: "Access denied" }), true;
       }
       if (!project.requirements_json) {
         return json(response, 400, { ok: false, error: "Discovery must be completed before solution design" }), true;
       }
 
-      const solution = await runSolutionAgent(project.requirements_json, { projectId: project.id });
+      const solution = await runSolutionAgent(project.requirements_json, { projectId: project.id, orgId: user.orgId });
       json(response, 200, { ok: true, project_id: project.id, solution });
     } catch (error) {
       json(response, 400, { ok: false, error: error.message });
@@ -109,13 +106,10 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const projectId = url.pathname.split("/")[3];
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project) {
         return json(response, 404, { ok: false, error: "Project not found" }), true;
-      }
-      const user = getSessionUser(request);
-      if (project.org_id !== user.orgId) {
-        return json(response, 403, { ok: false, error: "Access denied" }), true;
       }
       json(response, 200, { ok: true, project });
     } catch (error) {
@@ -128,13 +122,10 @@ export async function handle(request, url, response) {
     if (!requireRole(request, response, ["admin", "manager"])) return true;
     const projectId = url.pathname.split("/")[3];
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project) {
         return json(response, 404, { ok: false, error: "Project not found" }), true;
-      }
-      const user = getSessionUser(request);
-      if (project.org_id !== user.orgId) {
-        return json(response, 403, { ok: false, error: "Access denied" }), true;
       }
       await approveProject(projectId);
       json(response, 200, { ok: true, project_id: projectId, human_approved: true });
@@ -179,15 +170,12 @@ export async function handle(request, url, response) {
     if (!requireUserAuth(request, response)) return true;
     const projectId = url.pathname.split("/")[3];
     try {
-      const project = await getProjectById(projectId);
+      const user = getSessionUser(request);
+      const project = await getProjectById(projectId, user.orgId);
       if (!project) {
         return json(response, 404, { ok: false, error: "Project not found" }), true;
       }
-      const user = getSessionUser(request);
-      if (project.org_id !== user.orgId) {
-        return json(response, 403, { ok: false, error: "Access denied" }), true;
-      }
-      const conversations = await getConversationsByProject(projectId);
+      const conversations = await getConversationsByProject(projectId, user.orgId);
       json(response, 200, { ok: true, conversations });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
@@ -222,8 +210,8 @@ export async function handle(request, url, response) {
         return json(response, 400, { ok: false, error: "Rating must be 1 (up) or -1 (down)" }), true;
       }
       const user = getSessionUser(request);
-      const project = await getProjectById(projectId);
-      if (!project || project.org_id !== user.orgId) {
+      const project = await getProjectById(projectId, user.orgId);
+      if (!project) {
         return json(response, 403, { ok: false, error: "Access denied" }), true;
       }
       const result = await recordProjectFeedback(projectId, user.userId, rating);
