@@ -4,7 +4,8 @@ import {
   getProjectById,
   listProjectsByUser,
   persistRequirementsJson,
-  recordProjectFeedback
+  recordProjectFeedback,
+  deleteProject
 } from '../lib/projects.js';
 import { runDiscoveryAgent } from '../agents/discovery.js';
 import { runSolutionAgent } from '../agents/solution.js';
@@ -96,6 +97,24 @@ export async function handle(request, url, response) {
       const user = getSessionUser(request);
       const projects = await listProjectsByUser(user.userId, user.orgId);
       json(response, 200, { ok: true, projects });
+    } catch (error) {
+      json(response, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (request.method === "DELETE" && url.pathname.match(/^\/api\/projects\/[^/]+$/)) {
+    if (!requireUserAuth(request, response)) return true;
+    const projectId = url.pathname.split("/")[3];
+    try {
+      const user = getSessionUser(request);
+      const allowAny = user.role === "admin" || user.role === "superadmin";
+      const result = await deleteProject(projectId, user.userId, user.orgId, { allowAny });
+      if (!result.deleted) {
+        const code = result.reason === "not_found" ? 404 : result.reason === "forbidden" ? 403 : 500;
+        return json(response, code, { ok: false, error: result.reason }), true;
+      }
+      json(response, 200, { ok: true });
     } catch (error) {
       json(response, 500, { ok: false, error: error.message });
     }

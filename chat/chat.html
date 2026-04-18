@@ -152,8 +152,20 @@
       margin-bottom: 2px;
       transition: background .12s;
       position: relative;
+      display: flex; align-items: center; gap: 6px;
     }
     .project-item:hover { background: var(--paper-3); }
+    .project-item-body { flex: 1; min-width: 0; }
+    .project-delete-btn {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      border: none; background: transparent;
+      color: var(--ink-faint); cursor: pointer;
+      border-radius: 4px; font-size: 14px; line-height: 1;
+      opacity: 0; transition: opacity .15s, background .15s, color .15s;
+    }
+    .project-item:hover .project-delete-btn { opacity: 1; }
+    .project-delete-btn:hover { background: var(--terracotta-2); color: #fff; }
     .project-item.active { background: var(--surface); }
     .project-item.active::before {
       content: ""; position: absolute; left: -13px; top: 10px; bottom: 10px;
@@ -308,6 +320,29 @@
     }
     .logout-btn:hover { background: var(--surface); color: var(--ink); }
     .logout-btn svg { width: 15px; height: 15px; fill: currentColor; }
+
+    .user-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 11px; height: 34px;
+      background: var(--paper-2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      color: var(--ink); font-size: 13px; font-weight: 500;
+      max-width: 180px;
+    }
+    .user-chip .avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--terracotta-2); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .user-chip .uname {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .user-chip .role {
+      font-size: 10px; color: var(--ink-faint);
+      text-transform: uppercase; letter-spacing: .5px;
+    }
 
     /* ── THREAD (golden-ratio column, max 610px) ── */
     .thread {
@@ -1288,6 +1323,13 @@
         <div class="stage-badge" id="stage-badge">
           <div class="dot"></div>
           <span id="stage-text">Ready</span>
+        </div>
+        <div class="user-chip" id="user-chip" style="display:none" title="">
+          <div class="avatar" id="user-avatar"></div>
+          <div style="display:flex;flex-direction:column;line-height:1.1;min-width:0">
+            <span class="uname" id="user-name"></span>
+            <span class="role" id="user-role"></span>
+          </div>
         </div>
         <button class="logout-btn" id="logout-btn" title="ออกจากระบบ">
           <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>

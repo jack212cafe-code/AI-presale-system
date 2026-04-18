@@ -51,6 +51,7 @@ function dealCard(project) {
       <div class="deal-actions">
         <button class="btn btn-primary" data-resume="${encodeURIComponent(pid)}">Resume</button>
         ${exports.join("")}
+        <button class="btn btn-danger" data-delete="${encodeURIComponent(pid)}" data-name="${encodeURIComponent(project.customer_name ?? "Untitled")}">Delete</button>
       </div>
     </div>
   `;
@@ -93,6 +94,24 @@ function render() {
   document.querySelectorAll("[data-resume]").forEach(btn => {
     btn.addEventListener("click", () => {
       window.location.href = `/chat?project_id=${btn.dataset.resume}`;
+    });
+  });
+
+  document.querySelectorAll("[data-delete]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const pid = decodeURIComponent(btn.dataset.delete);
+      const name = decodeURIComponent(btn.dataset.name);
+      if (!confirm(`ลบ "${name}" ทิ้ง? ข้อความและ pipeline ทั้งหมดจะหายไปด้วย`)) return;
+      btn.disabled = true; btn.textContent = "กำลังลบ...";
+      try {
+        const res = await fetch(`/api/projects/${pid}`, { method: "DELETE", credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        allProjects = allProjects.filter(p => p.id !== pid);
+        render();
+      } catch (e) {
+        alert(`ลบไม่สำเร็จ: ${e.message}`);
+        btn.disabled = false; btn.textContent = "Delete";
+      }
     });
   });
 

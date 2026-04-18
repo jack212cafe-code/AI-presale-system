@@ -655,10 +655,26 @@ async function loadProjects() {
     item.className = "project-item";
     item.dataset.projectId = project.id;
     item.innerHTML = `
-      <div class="project-item-name">${escapeHtml(project.customer_name || "Untitled")}</div>
-      <div class="project-item-date">${formatDate(project.created_at)}</div>
+      <div class="project-item-body">
+        <div class="project-item-name">${escapeHtml(project.customer_name || "Untitled")}</div>
+        <div class="project-item-date">${formatDate(project.created_at)}</div>
+      </div>
+      <button class="project-delete-btn" title="ลบ project นี้" aria-label="ลบ">×</button>
     `;
-    item.addEventListener("click", () => loadConversation(project.id));
+    item.querySelector(".project-item-body").addEventListener("click", () => loadConversation(project.id));
+    item.querySelector(".project-delete-btn").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`ลบ "${project.customer_name || "Untitled"}" ทิ้ง? ข้อความและ pipeline ทั้งหมดจะหายไปด้วย`)) return;
+      const { response: r } = await apiFetch(`/api/projects/${project.id}`, { method: "DELETE" });
+      if (!r.ok) { alert("ลบไม่สำเร็จ"); return; }
+      if (activeProjectId === project.id) {
+        activeProjectId = null;
+        activeConversationId = null;
+        thread.innerHTML = "";
+        document.querySelector("#empty-state")?.style.setProperty("display", "");
+      }
+      await loadProjects();
+    });
     projectList.appendChild(item);
   });
 }
@@ -836,7 +852,23 @@ async function syncSession() {
   const { response, payload } = await apiFetch("/api/auth/session", { method: "GET" });
   if (!response.ok || !payload.authenticated) { window.location.replace("/login"); return; }
   currentUser = payload.user;
+  renderUserChip(currentUser);
   await loadProjects();
+}
+
+function renderUserChip(u) {
+  if (!u) return;
+  const chip = document.querySelector("#user-chip");
+  const nameEl = document.querySelector("#user-name");
+  const roleEl = document.querySelector("#user-role");
+  const avatarEl = document.querySelector("#user-avatar");
+  if (!chip || !nameEl || !roleEl || !avatarEl) return;
+  const name = u.display_name || u.username || "user";
+  nameEl.textContent = name;
+  roleEl.textContent = u.role || "";
+  avatarEl.textContent = name.slice(0, 1).toUpperCase();
+  chip.title = `${u.username || name}${u.role ? " · " + u.role : ""}`;
+  chip.style.display = "flex";
 }
 
 syncSession();
